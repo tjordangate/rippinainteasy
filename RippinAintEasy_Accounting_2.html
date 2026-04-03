@@ -1,0 +1,1127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RippinAintEasy — Accounting</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  --bg:#0d0d12; --surface:#13131c; --card:#1a1a28; --border:#252538;
+  --accent:#e94560; --gold:#f5a623; --teal:#00c9a7; --blue:#4d8aff; --purple:#a855f7; --orange:#fb923c;
+  --text:#e8e8f0; --muted:#5a5a78; --green:#22c55e; --red:#ef4444;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");pointer-events:none;z-index:0;opacity:.4}
+
+header{padding:0 28px;height:64px;display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,#16101e 0%,#0d0d12 100%);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:50}
+.logo{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:3px;color:#fff}.logo span{color:var(--accent)}
+.hdr-kpis{display:flex;gap:24px}
+.hkv{font-family:'DM Mono',monospace;font-size:16px;font-weight:500;text-align:right}
+.hkl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;text-align:right}
+
+nav{display:flex;background:var(--surface);border-bottom:1px solid var(--border);padding:0 28px;overflow-x:auto;position:sticky;top:64px;z-index:40;scrollbar-width:none}
+nav::-webkit-scrollbar{display:none}
+.tab{padding:12px 16px;font-size:12px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap;border:none;background:transparent}
+.tab:hover{color:var(--text)}.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+.filter-bar{display:flex;align-items:center;gap:7px;padding:9px 28px;background:var(--surface);border-bottom:1px solid var(--border);flex-wrap:wrap}
+.fl{font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);flex-shrink:0}
+.fb{padding:4px 11px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:'DM Mono',monospace;font-size:11px;cursor:pointer;transition:all .18s}
+.fb:hover{border-color:var(--accent);color:var(--accent)}
+.fb.on{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 0 10px rgba(233,69,96,.3)}
+.crange{display:flex;align-items:center;gap:5px}
+.crange input{background:#0d0d12;border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--text);font-family:'DM Mono',monospace;font-size:11px;outline:none;width:125px;transition:border-color .2s}
+.crange input:focus{border-color:var(--accent)}
+.crange span{color:var(--muted);font-size:11px}
+.fperiod{margin-left:auto;font-family:'DM Mono',monospace;font-size:11px;color:var(--accent);flex-shrink:0}
+
+main{padding:20px 28px;width:100%}
+.panel{display:none}.panel.active{display:block}
+
+.kpi-row{display:grid;gap:11px;margin-bottom:18px}
+.g3{grid-template-columns:repeat(3,1fr)}.g4{grid-template-columns:repeat(4,1fr)}.g5{grid-template-columns:repeat(5,1fr)}.g6{grid-template-columns:repeat(6,1fr)}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:11px;padding:14px 16px;position:relative;overflow:hidden;transition:border-color .2s}
+.kpi:hover{border-color:rgba(233,69,96,.4)}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:11px 11px 0 0}
+.kpi.kr::before{background:var(--accent)}.kpi.kg::before{background:var(--teal)}.kpi.ko::before{background:var(--gold)}
+.kpi.kb::before{background:var(--blue)}.kpi.kp::before{background:var(--purple)}.kpi.kor::before{background:var(--orange)}
+.kpi-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-family:'DM Mono',monospace;margin-bottom:6px}
+.kpi-val{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:1px;line-height:1;color:#fff}
+.kpi-val.pos{color:var(--green)}.kpi-val.neg{color:var(--red)}
+
+.sec{font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:11px;display:flex;align-items:center;gap:10px}
+.sec::after{content:'';flex:1;height:1px;background:var(--border)}
+
+.tw{background:var(--card);border:1px solid var(--border);border-radius:11px;overflow:hidden;margin-bottom:18px}
+.th{display:flex;align-items:center;justify-content:space-between;padding:11px 16px;border-bottom:1px solid var(--border);background:var(--surface)}
+.th b{font-size:13px}.th span{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted)}
+table{width:100%;border-collapse:collapse}
+thead th{background:#0f0f1a;padding:8px 11px;text-align:left;font-size:10px;font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);border-bottom:1px solid var(--border);white-space:nowrap}
+tbody tr{border-bottom:1px solid var(--border);transition:background .15s}
+tbody tr:hover{background:rgba(255,255,255,.02)}
+tbody tr:last-child{border-bottom:none}
+tbody td{padding:8px 11px;font-size:13px;vertical-align:middle}
+td.m{font-family:'DM Mono',monospace;text-align:right}
+td.pos{color:var(--green)}td.neg{color:var(--red)}
+.em{text-align:center;padding:32px;color:var(--muted);font-size:13px}
+
+.fg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(165px,1fr));gap:11px;margin-bottom:13px}
+.fg{display:flex;flex-direction:column;gap:4px}
+.fg label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace}
+.fg input,.fg select{width:100%;background:#0a0a10;border:1px solid var(--border);border-radius:7px;padding:8px 10px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;transition:border-color .2s}
+.fg input:focus,.fg select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(233,69,96,.1)}
+.fg select option{background:#1a1a28}
+
+.btn{padding:8px 17px;border:none;border-radius:7px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:6px}
+.btn-p{background:var(--accent);color:#fff}.btn-p:hover{background:#c73653;transform:translateY(-1px);box-shadow:0 4px 16px rgba(233,69,96,.4)}
+.btn-d{background:transparent;border:1px solid var(--red);color:var(--red);padding:3px 8px;font-size:11px;border-radius:5px}.btn-d:hover{background:rgba(239,68,68,.1)}
+
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-family:'DM Mono',monospace}
+.b-blue{background:rgba(77,138,255,.15);color:var(--blue)}.b-gold{background:rgba(245,166,35,.15);color:var(--gold)}
+.b-green{background:rgba(34,197,94,.15);color:var(--green)}.b-red{background:rgba(239,68,68,.15);color:var(--red)}
+.b-purple{background:rgba(168,85,247,.15);color:#c4b5fd}.b-teal{background:rgba(0,201,167,.15);color:var(--teal)}
+.b-orange{background:rgba(251,146,60,.15);color:var(--orange)}
+
+.pl-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px}
+.pl-row{display:flex;justify-content:space-between;align-items:center;padding:8px 15px;border-bottom:1px solid var(--border)}
+.pl-row:last-child{border-bottom:none}
+.pl-row.pl-sec{background:#0f0f1a;padding:5px 15px}
+.pl-row.pl-sec span:first-child{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--accent);font-family:'DM Mono',monospace;font-weight:700}
+.pl-row.pl-tot{background:rgba(233,69,96,.06);border-top:1px solid rgba(233,69,96,.2)}
+.pl-row.pl-tot span:first-child{font-weight:700;color:#fff}
+.pl-lbl{font-size:12px;color:var(--muted)}.pl-val{font-family:'DM Mono',monospace;font-size:13px}
+
+.pb-bar-wrap{background:var(--border);border-radius:4px;height:4px;overflow:hidden;margin-top:4px}
+.pb-bar{height:100%;border-radius:4px;transition:width .4s}
+
+.callout{border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12px;display:flex;align-items:flex-start;gap:8px;line-height:1.5}
+.callout.purple{background:rgba(168,85,247,.08);border:1px solid rgba(168,85,247,.2);color:#c4b5fd}
+.callout.teal{background:rgba(0,201,167,.08);border:1px solid rgba(0,201,167,.2);color:var(--teal)}
+.callout.orange{background:rgba(251,146,60,.08);border:1px solid rgba(251,146,60,.2);color:var(--orange)}
+.callout.blue{background:rgba(77,138,255,.08);border:1px solid rgba(77,138,255,.2);color:var(--blue)}
+
+/* TAX TABLE */
+.tax-section{background:var(--card);border:1px solid var(--border);border-radius:11px;overflow:hidden;margin-bottom:18px}
+.tax-header{padding:12px 18px;background:var(--surface);border-bottom:1px solid var(--border);font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:2px;color:var(--gold)}
+.tax-row{display:flex;justify-content:space-between;align-items:center;padding:9px 18px;border-bottom:1px solid var(--border);font-size:13px}
+.tax-row:last-child{border-bottom:none}
+.tax-row.highlight{background:rgba(245,166,35,.05)}
+.tax-row.total-row{background:rgba(233,69,96,.06);font-weight:600;color:#fff}
+.tax-lbl{color:var(--muted)}
+.tax-val{font-family:'DM Mono',monospace}
+
+/* Shipping status colors */
+.sh-profit{color:var(--green)}.sh-loss{color:var(--red)}.sh-even{color:var(--muted)}
+
+@media(max-width:900px){
+  main,header,nav,.filter-bar{padding-left:14px;padding-right:14px}
+  .pl-grid{grid-template-columns:1fr}
+  .g4,.g5,.g6{grid-template-columns:1fr 1fr}
+  .g3{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Rippin<span>AintEasy</span></div>
+  <div class="hdr-kpis">
+    <div><div class="hkv" id="h-rev" style="color:var(--teal)">$0</div><div class="hkl">Net Revenue</div></div>
+    <div><div class="hkv" id="h-expenses" style="color:var(--red)">$0</div><div class="hkl">Total Expenses</div></div>
+    <div><div class="hkv" id="h-profit">$0</div><div class="hkl">Net Profit</div></div>
+    <div><div class="hkv" id="h-pending" style="color:var(--gold)">$0</div><div class="hkl">Pending Payout</div></div>
+    <button onclick="exportXLSX()" id="export-btn" style="
+      background:transparent;border:1px solid var(--border);color:var(--muted);
+      font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;
+      padding:7px 14px;border-radius:7px;cursor:pointer;
+      display:flex;align-items:center;gap:6px;transition:all .2s;white-space:nowrap;
+    " onmouseover="this.style.borderColor='var(--teal)';this.style.color='var(--teal)'"
+       onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">
+      ⬇ Export .xlsx
+    </button>
+  </div>
+</header>
+
+<nav>
+  <button class="tab active" onclick="sw('dash')">📊 Dashboard</button>
+  <button class="tab" onclick="sw('breaks')">🃏 Break Log</button>
+  <button class="tab" onclick="sw('perbreak')">🏆 Per-Break P&L</button>
+  <button class="tab" onclick="sw('inv')">📦 Inventory</button>
+  <button class="tab" onclick="sw('shipping')">📬 Shipping Out</button>
+  <button class="tab" onclick="sw('ads')">📣 Ad Spend</button>
+  <button class="tab" onclick="sw('expenses')">🔧 Other Expenses</button>
+  <button class="tab" onclick="sw('payouts')">💰 Payouts</button>
+  <button class="tab" onclick="sw('tax')">🗂️ Tax Summary</button>
+</nav>
+
+<div class="filter-bar" id="fbar">
+  <span class="fl">Period:</span>
+  <button class="fb on" onclick="setF('today')">Today</button>
+  <button class="fb" onclick="setF('week')">This Week</button>
+  <button class="fb" onclick="setF('month')">This Month</button>
+  <button class="fb" onclick="setF('quarter')">This Quarter</button>
+  <button class="fb" onclick="setF('year')">This Year</button>
+  <button class="fb" onclick="setF('all')">All Time</button>
+  <div class="crange">
+    <input type="date" id="fs" onchange="setF('custom')">
+    <span>→</span>
+    <input type="date" id="fe" onchange="setF('custom')">
+  </div>
+  <span class="fperiod" id="fplabel"></span>
+</div>
+
+<main>
+
+<!-- ═══ DASHBOARD ════════════════════════════════════════════════════ -->
+<div class="panel active" id="panel-dash">
+  <div class="kpi-row g5">
+    <div class="kpi kr"><div class="kpi-lbl">Gross Revenue</div><div class="kpi-val" id="d-gross">$0</div></div>
+    <div class="kpi ko"><div class="kpi-lbl">WN Platform Fees</div><div class="kpi-val" id="d-wnfee">$0</div></div>
+    <div class="kpi kb"><div class="kpi-lbl">Net Revenue</div><div class="kpi-val" id="d-netrev">$0</div></div>
+    <div class="kpi kr"><div class="kpi-lbl">Total Expenses</div><div class="kpi-val" id="d-expenses">$0</div></div>
+    <div class="kpi kg"><div class="kpi-lbl">Net Profit</div><div class="kpi-val" id="d-profit">$0</div></div>
+  </div>
+  <div class="kpi-row g6">
+    <div class="kpi kp"><div class="kpi-lbl">Ad Spend</div><div class="kpi-val" id="d-ads">$0</div></div>
+    <div class="kpi kb"><div class="kpi-lbl">Inventory Cost</div><div class="kpi-val" id="d-inv">$0</div></div>
+    <div class="kpi kor"><div class="kpi-lbl">Shipping Out Cost</div><div class="kpi-val" id="d-ship">$0</div></div>
+    <div class="kpi ko"><div class="kpi-lbl">Other Expenses</div><div class="kpi-val" id="d-other">$0</div></div>
+    <div class="kpi ko"><div class="kpi-lbl">Margin %</div><div class="kpi-val" id="d-margin">0%</div></div>
+    <div class="kpi kg"><div class="kpi-lbl">Avg Profit / Break</div><div class="kpi-val" id="d-avg">$0</div></div>
+  </div>
+
+  <div class="pl-grid">
+    <div class="tw">
+      <div class="th"><b>Income Statement</b><span id="d-period-lbl">all-time</span></div>
+      <div id="pl-rows" style="padding:3px 7px"></div>
+    </div>
+    <div class="tw">
+      <div class="th"><b>Monthly Breakdown</b><span>recent months</span></div>
+      <table><thead><tr><th>Month</th><th>Revenue</th><th>WN Fees</th><th>Shipping</th><th>Ads</th><th>Inv</th><th>Other</th><th>Profit</th></tr></thead>
+      <tbody id="monthly-tbody"></tbody></table>
+    </div>
+  </div>
+
+  <div class="sec">Recent Breaks</div>
+  <div class="tw">
+    <table><thead><tr><th>Date</th><th>Break</th><th>Sport</th><th>Spots</th><th>Gross</th><th>Net Rev</th><th>Profit</th></tr></thead>
+    <tbody id="d-recent"></tbody></table>
+  </div>
+</div>
+
+<!-- ═══ BREAK LOG ════════════════════════════════════════════════════ -->
+<div class="panel" id="panel-breaks">
+  <div class="sec">Add New Break</div>
+  <div class="tw" style="padding:16px;margin-bottom:18px">
+    <div class="fg-grid">
+      <div class="fg"><label>Date</label><input type="date" id="b-date"></div>
+      <div class="fg"><label>Break Name</label><input type="text" id="b-name" placeholder="e.g. NBA Prizm Box Break"></div>
+      <div class="fg"><label>Sport / Category</label>
+        <select id="b-sport"><option value="">Select…</option><option>NBA</option><option>NFL</option><option>MLB</option><option>NHL</option><option>Soccer</option><option>Pokemon</option><option>Other TCG</option><option>Mixed</option></select>
+      </div>
+      <div class="fg"><label>Break Type</label>
+        <select id="b-type"><option value="">Select…</option><option>Random</option><option>Pick Your Team</option><option>Hit Draft</option><option>Serial</option><option>Case Break</option><option>Other</option></select>
+      </div>
+      <div class="fg"><label>Total Spots Available</label><input type="number" id="b-spots" placeholder="0" min="0"></div>
+      <div class="fg"><label>Spots Sold</label><input type="number" id="b-sold" placeholder="0" min="0"></div>
+      <div class="fg"><label>Spot Price ($)</label><input type="number" id="b-price" placeholder="0.00" step="0.01"></div>
+      <div class="fg"><label>WN Platform Fee %</label>
+        <select id="b-feepct"><option value="0.08">8% (standard)</option><option value="0.09">9%</option><option value="0.10">10%</option><option value="0.07">7%</option><option value="0.06">6%</option></select>
+      </div>
+      <div class="fg"><label>Inventory Cost / COGS ($)</label><input type="number" id="b-cogs" placeholder="0.00" step="0.01"></div>
+      <div class="fg"><label>Ad Spend Linked ($)</label><input type="number" id="b-adspend" placeholder="0.00" step="0.01"></div>
+      <div class="fg"><label>Notes</label><input type="text" id="b-notes" placeholder="Optional"></div>
+    </div>
+    <button class="btn btn-p" onclick="addBreak()">＋ Add Break</button>
+  </div>
+  <div class="sec">Break History</div>
+  <div class="tw">
+    <div class="th"><b>Filtered Breaks</b><span id="b-cnt-lbl">0 entries</span></div>
+    <table><thead><tr><th>Date</th><th>Break Name</th><th>Sport</th><th>Type</th><th>Spots Sold</th><th>Spot $</th><th>Gross</th><th>WN Fee</th><th>COGS</th><th>Ad $</th><th>Net Rev</th><th>Profit</th><th></th></tr></thead>
+    <tbody id="b-tbody"></tbody></table>
+  </div>
+</div>
+
+<!-- ═══ PER-BREAK P&L ════════════════════════════════════════════════ -->
+<div class="panel" id="panel-perbreak">
+  <div class="callout teal">📊 Ranked by net profit. Use this to see which sports, formats, and price points make you the most money.</div>
+  <div class="kpi-row g4">
+    <div class="kpi kg"><div class="kpi-lbl">Most Profitable Break</div><div class="kpi-val" id="pb-top" style="font-size:15px;overflow:hidden;text-overflow:ellipsis">—</div></div>
+    <div class="kpi kr"><div class="kpi-lbl">Least Profitable</div><div class="kpi-val" id="pb-bot" style="font-size:15px;overflow:hidden;text-overflow:ellipsis">—</div></div>
+    <div class="kpi ko"><div class="kpi-lbl">Best Sport/Category</div><div class="kpi-val" id="pb-sport" style="font-size:18px">—</div></div>
+    <div class="kpi kb"><div class="kpi-lbl">Best Break Type</div><div class="kpi-val" id="pb-type" style="font-size:18px">—</div></div>
+  </div>
+  <div class="sec">All Breaks — Ranked by Profit</div>
+  <div class="tw">
+    <div class="th"><b>Per-Break P&L</b><span id="pb-cnt-lbl">0 breaks</span></div>
+    <table><thead><tr><th>#</th><th>Date</th><th>Break Name</th><th>Sport</th><th>Type</th><th>Gross</th><th>WN Fee</th><th>COGS</th><th>Ad $</th><th>Net Rev</th><th>Profit</th><th>Margin</th></tr></thead>
+    <tbody id="pb-tbody"></tbody></table>
+  </div>
+  <div class="pl-grid">
+    <div class="tw">
+      <div class="th"><b>By Sport</b><span>all-time</span></div>
+      <table><thead><tr><th>Sport</th><th>Breaks</th><th>Gross</th><th>Profit</th><th>Avg/Break</th></tr></thead>
+      <tbody id="pb-sport-tbody"></tbody></table>
+    </div>
+    <div class="tw">
+      <div class="th"><b>By Break Type</b><span>all-time</span></div>
+      <table><thead><tr><th>Type</th><th>Breaks</th><th>Gross</th><th>Profit</th><th>Avg/Break</th></tr></thead>
+      <tbody id="pb-type-tbody"></tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ INVENTORY ════════════════════════════════════════════════════ -->
+<div class="panel" id="panel-inv">
+  <div class="sec">Add Purchase</div>
+  <div class="tw" style="padding:16px;margin-bottom:18px">
+    <div class="fg-grid">
+      <div class="fg"><label>Date</label><input type="date" id="i-date"></div>
+      <div class="fg"><label>Product / Set</label><input type="text" id="i-product" placeholder="e.g. 2024 Prizm Blaster"></div>
+      <div class="fg"><label>Category</label>
+        <select id="i-cat"><option value="">Select…</option><option>NBA</option><option>NFL</option><option>MLB</option><option>NHL</option><option>Soccer</option><option>Pokemon</option><option>Other TCG</option><option>Supplies</option><option>Other</option></select>
+      </div>
+      <div class="fg"><label>Qty</label><input type="number" id="i-qty" value="1" min="1"></div>
+      <div class="fg"><label>Cost Per Unit ($)</label><input type="number" id="i-cost" placeholder="0.00" step="0.01"></div>
+      <div class="fg"><label>Assigned Break</label><input type="text" id="i-break" placeholder="Break name or TBD"></div>
+      <div class="fg"><label>Status</label>
+        <select id="i-status"><option>In Stock</option><option>Broken</option><option>Sold</option><option>Reserved</option></select>
+      </div>
+      <div class="fg"><label>Notes</label><input type="text" id="i-notes" placeholder="Optional"></div>
+    </div>
+    <button class="btn btn-p" onclick="addInv()">＋ Add Purchase</button>
+  </div>
+  <div class="sec">Inventory Log</div>
+  <div class="tw">
+    <div class="th"><b>All Purchases</b><span id="i-cnt-lbl">0 entries</span></div>
+    <table><thead><tr><th>Date</th><th>Product</th><th>Cat</th><th>Qty</th><th>Cost/Unit</th><th>Total Cost</th><th>Assigned Break</th><th>Status</th><th>Notes</th><th></th></tr></thead>
+    <tbody id="i-tbody"></tbody></table>
+  </div>
+</div>
+
+<!-- ═══ SHIPPING OUT ════════════════════════════════════════════════ -->
+<div class="panel" id="panel-shipping">
+  <div class="callout orange">📬 Log every package you ship out after a break — track actual postage cost vs. what you collected from buyers to see your real shipping P&L.</div>
+  <div class="sec">Log Shipment</div>
+  <div class="tw" style="padding:16px;margin-bottom:18px">
+    <div class="fg-grid">
+      <div class="fg"><label>Ship Date</label><input type="date" id="sh-date"></div>
+      <div class="fg"><label>Buyer / Winner Name</label><input type="text" id="sh-buyer" placeholder="Username or name"></div>
+      <div class="fg"><label>Linked Break</label><input type="text" id="sh-break" placeholder="Break this came from"></div>
+      <div class="fg"><label>Carrier</label>
+        <select id="sh-carrier"><option value="">Select…</option><option>USPS First Class</option><option>USPS Priority</option><option>USPS Ground</option><option>UPS Ground</option><option>UPS 2-Day</option><option>FedEx Ground</option><option>FedEx Overnight</option><option>Other</option></select>
+      </div>
+      <div class="fg"><label>Package Type</label>
+        <select id="sh-pkg"><option value="">Select…</option><option>PWE (Plain White Envelope)</option><option>Bubble Mailer</option><option>Small Flat Rate Box</option><option>Medium Flat Rate Box</option><option>Large Flat Rate Box</option><option>Custom Box</option><option>Padded Envelope</option></select>
+      </div>
+      <div class="fg"><label>Tracking #</label><input type="text" id="sh-tracking" placeholder="Optional"></div>
+      <div class="fg"><label>Actual Postage Cost ($)</label><input type="number" id="sh-cost" placeholder="0.00" step="0.01"></div>
+      <div class="fg"><label>Shipping Collected from Buyer ($)</label><input type="number" id="sh-charged" placeholder="0.00 if free ship" step="0.01"></div>
+      <div class="fg"><label>Items in Package</label><input type="text" id="sh-items" placeholder="e.g. 3 cards, 1 slab"></div>
+      <div class="fg"><label>Notes</label><input type="text" id="sh-notes" placeholder="Optional"></div>
+    </div>
+    <button class="btn btn-p" onclick="addShip()">＋ Log Shipment</button>
+  </div>
+
+  <div class="kpi-row g4">
+    <div class="kpi kor"><div class="kpi-lbl">Total Postage Paid</div><div class="kpi-val" id="sh-kpi-cost">$0</div></div>
+    <div class="kpi kb"><div class="kpi-lbl">Total Shipping Collected</div><div class="kpi-val" id="sh-kpi-charged">$0</div></div>
+    <div class="kpi kg"><div class="kpi-lbl">Shipping P&L</div><div class="kpi-val" id="sh-kpi-pl">$0</div></div>
+    <div class="kpi ko"><div class="kpi-lbl">Packages Logged</div><div class="kpi-val" id="sh-kpi-cnt">0</div></div>
+  </div>
+
+  <div class="sec">Shipment History</div>
+  <div class="tw">
+    <div class="th"><b>All Shipments</b><span id="sh-cnt-lbl">0 entries</span></div>
+    <table><thead><tr><th>Date</th><th>Buyer</th><th>Break</th><th>Carrier</th><th>Package</th><th>Tracking</th><th>Postage Cost</th><th>Collected</th><th>Ship P&L</th><th>Items</th><th>Notes</th><th></th></tr></thead>
+    <tbody id="sh-tbody"></tbody></table>
+  </div>
+</div>
+
+<!-- ═══ AD SPEND ═════════════════════════════════════════════════════ -->
+<div class="panel" id="panel-ads">
+  <div class="callout purple">💡 Track Whatnot Promoted Listings, Boost campaigns, and social ads separately from platform fees to see your true marketing ROI.</div>
+  <div class="sec">Log Ad Spend</div>
+  <div class="tw" style="padding:16px;margin-bottom:18px">
+    <div class="fg-grid">
+      <div class="fg"><label>Date</label><input type="date" id="a-date"></div>
+      <div class="fg"><label>Ad Type</label>
+        <select id="a-type"><option value="">Select…</option><option>Whatnot Promoted Listing</option><option>Whatnot Boost</option><option>Whatnot Featured Slot</option><option>Instagram / Facebook</option><option>TikTok</option><option>YouTube</option><option>Influencer / Collab</option><option>Other</option></select>
+      </div>
+      <div class="fg"><label>Campaign / Description</label><input type="text" id="a-desc" placeholder="e.g. Prizm boost Apr 1"></div>
+      <div class="fg"><label>Amount Spent ($)</label><input type="number" id="a-amount" placeholder="0.00" step="0.01"></div>
+      <div class="fg"><label>Linked Break</label><input type="text" id="a-break" placeholder="Break this supported"></div>
+      <div class="fg"><label>Revenue Attributed ($)</label><input type="number" id="a-rev" placeholder="0.00" step="0.01"></div>
+      <div class="fg"><label>Notes</label><input type="text" id="a-notes" placeholder="Optional"></div>
+    </div>
+    <button class="btn btn-p" onclick="addAd()">＋ Log Ad Spend</button>
+  </div>
+  <div class="kpi-row g4">
+    <div class="kpi kp"><div class="kpi-lbl">Total Ad Spend</div><div class="kpi-val" id="a-total">$0</div></div>
+    <div class="kpi ko"><div class="kpi-lbl">Revenue Attributed</div><div class="kpi-val" id="a-rev-kpi">$0</div></div>
+    <div class="kpi kg"><div class="kpi-lbl">ROAS</div><div class="kpi-val" id="a-roas">—</div></div>
+    <div class="kpi kb"><div class="kpi-lbl">Entries</div><div class="kpi-val" id="a-cnt-kpi">0</div></div>
+  </div>
+  <div class="sec">Ad Spend History</div>
+  <div class="tw">
+    <div class="th"><b>All Ad Entries</b><span id="a-cnt-lbl">0 entries</span></div>
+    <table><thead><tr><th>Date</th><th>Type</th><th>Campaign</th><th>Spent</th><th>Linked Break</th><th>Rev Attributed</th><th>ROAS</th><th>Notes</th><th></th></tr></thead>
+    <tbody id="a-tbody"></tbody></table>
+  </div>
+</div>
+
+<!-- ═══ OTHER EXPENSES ════════════════════════════════════════════════ -->
+<div class="panel" id="panel-expenses">
+  <div class="callout blue">🔧 Catch-all for business expenses that don't fit elsewhere: equipment, subscriptions (Discord, Whop, Canva), PayPal/Stripe fees, office supplies, mileage, phone bill portion, etc.</div>
+  <div class="sec">Add Expense</div>
+  <div class="tw" style="padding:16px;margin-bottom:18px">
+    <div class="fg-grid">
+      <div class="fg"><label>Date</label><input type="date" id="ex-date"></div>
+      <div class="fg"><label>Description</label><input type="text" id="ex-desc" placeholder="e.g. Whop monthly subscription"></div>
+      <div class="fg"><label>Category</label>
+        <select id="ex-cat"><option value="">Select…</option>
+          <option>Subscription / Software</option>
+          <option>Payment Processing Fees</option>
+          <option>Equipment / Hardware</option>
+          <option>Office / Packaging Supplies</option>
+          <option>Phone / Internet (% business)</option>
+          <option>Mileage / Travel</option>
+          <option>Professional Services</option>
+          <option>Banking Fees</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div class="fg"><label>Amount ($)</label><input type="number" id="ex-amount" placeholder="0.00" step="0.01"></div>
+      <div class="fg"><label>Recurring?</label>
+        <select id="ex-recurring"><option value="No">No — one-time</option><option value="Monthly">Monthly</option><option value="Annual">Annual</option></select>
+      </div>
+      <div class="fg"><label>Tax Deductible?</label>
+        <select id="ex-tax"><option value="Yes">Yes</option><option value="Maybe">Maybe / Ask CPA</option><option value="No">No</option></select>
+      </div>
+      <div class="fg"><label>Notes / Vendor</label><input type="text" id="ex-notes" placeholder="e.g. Whop.com"></div>
+    </div>
+    <button class="btn btn-p" onclick="addExpense()">＋ Add Expense</button>
+  </div>
+  <div class="kpi-row g4">
+    <div class="kpi ko"><div class="kpi-lbl">Total Expenses</div><div class="kpi-val" id="ex-total">$0</div></div>
+    <div class="kpi kg"><div class="kpi-lbl">Tax Deductible Est.</div><div class="kpi-val" id="ex-deduct">$0</div></div>
+    <div class="kpi kb"><div class="kpi-lbl">Monthly Recurring</div><div class="kpi-val" id="ex-monthly">$0</div></div>
+    <div class="kpi kp"><div class="kpi-lbl">Entries</div><div class="kpi-val" id="ex-cnt-kpi">0</div></div>
+  </div>
+  <div class="sec">Expense Log</div>
+  <div class="tw">
+    <div class="th"><b>All Expenses</b><span id="ex-cnt-lbl">0 entries</span></div>
+    <table><thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Amount</th><th>Recurring</th><th>Tax Deductible</th><th>Notes</th><th></th></tr></thead>
+    <tbody id="ex-tbody"></tbody></table>
+  </div>
+</div>
+
+<!-- ═══ PAYOUTS ══════════════════════════════════════════════════════ -->
+<div class="panel" id="panel-payouts">
+  <div class="callout teal">💸 Whatnot pays on a rolling schedule. Log each payout to track cash actually received vs. earnings on the books.</div>
+  <div class="sec">Log Payout</div>
+  <div class="tw" style="padding:16px;margin-bottom:18px">
+    <div class="fg-grid">
+      <div class="fg"><label>Payout Date</label><input type="date" id="p-date"></div>
+      <div class="fg"><label>Period Covered</label><input type="text" id="p-period" placeholder="e.g. Mar 24–Mar 30"></div>
+      <div class="fg"><label>Gross Earnings ($)</label><input type="number" id="p-gross" placeholder="0.00" step="0.01"></div>
+      <div class="fg"><label>WN Fees Deducted ($)</label><input type="number" id="p-fees" placeholder="0.00" step="0.01"></div>
+      <div class="fg"><label>Net Payout Received ($)</label><input type="number" id="p-net" placeholder="0.00" step="0.01"></div>
+      <div class="fg"><label>Status</label>
+        <select id="p-status"><option>Paid</option><option>Pending</option><option>Processing</option></select>
+      </div>
+      <div class="fg"><label>Payout Method</label>
+        <select id="p-method"><option>Bank Transfer</option><option>Instant Pay</option><option>Check</option><option>Other</option></select>
+      </div>
+      <div class="fg"><label>Notes</label><input type="text" id="p-notes" placeholder="Optional"></div>
+    </div>
+    <button class="btn btn-p" onclick="addPayout()">＋ Log Payout</button>
+  </div>
+  <div class="kpi-row g4">
+    <div class="kpi kg"><div class="kpi-lbl">Total Paid Out</div><div class="kpi-val" id="po-paid">$0</div></div>
+    <div class="kpi ko"><div class="kpi-lbl">Pending / Processing</div><div class="kpi-val" id="po-pend">$0</div></div>
+    <div class="kpi kb"><div class="kpi-lbl">Total Gross (Logged)</div><div class="kpi-val" id="po-gross">$0</div></div>
+    <div class="kpi kp"><div class="kpi-lbl">Payout Entries</div><div class="kpi-val" id="po-cnt">0</div></div>
+  </div>
+  <div class="sec">Payout History</div>
+  <div class="tw">
+    <div class="th"><b>All Payouts</b><span id="po-cnt-lbl">0 entries</span></div>
+    <table><thead><tr><th>Payout Date</th><th>Period</th><th>Gross</th><th>WN Fees</th><th>Net Received</th><th>Method</th><th>Status</th><th>Notes</th><th></th></tr></thead>
+    <tbody id="po-tbody"></tbody></table>
+  </div>
+</div>
+
+<!-- ═══ TAX SUMMARY ══════════════════════════════════════════════════ -->
+<div class="panel" id="panel-tax">
+  <div class="callout blue">🗂️ This is a summary to help you or your accountant at tax time — not tax advice. Quarterly estimated tax deadlines: <b>Apr 15 · Jun 15 · Sep 15 · Jan 15</b>. Consult a CPA for your actual liability.</div>
+  <div class="kpi-row g4">
+    <div class="kpi kr"><div class="kpi-lbl">Gross Revenue (YTD)</div><div class="kpi-val" id="tx-gross">$0</div></div>
+    <div class="kpi kb"><div class="kpi-lbl">Total Deductible Expenses</div><div class="kpi-val" id="tx-exp">$0</div></div>
+    <div class="kpi ko"><div class="kpi-lbl">Est. Net Income (YTD)</div><div class="kpi-val" id="tx-net">$0</div></div>
+    <div class="kpi kp"><div class="kpi-lbl">Self-Employment Tax Est. (15.3%)</div><div class="kpi-val" id="tx-se">$0</div></div>
+  </div>
+
+  <div class="pl-grid">
+    <div class="tax-section">
+      <div class="tax-header">REVENUE (Year-to-Date)</div>
+      <div id="tx-rev-rows"></div>
+    </div>
+    <div class="tax-section">
+      <div class="tax-header">DEDUCTIBLE EXPENSES (Year-to-Date)</div>
+      <div id="tx-exp-rows"></div>
+    </div>
+  </div>
+
+  <div class="sec">Quarterly Breakdown</div>
+  <div class="tw">
+    <div class="th"><b>Quarterly P&L</b><span id="tx-year-lbl"></span></div>
+    <table><thead><tr><th>Quarter</th><th>Est. Dates</th><th>Gross Revenue</th><th>Total Expenses</th><th>Net Income</th><th>SE Tax Est. (15.3%)</th></tr></thead>
+    <tbody id="tx-q-tbody"></tbody></table>
+  </div>
+
+  <div class="callout purple" style="margin-top:8px">💼 Keep records of: all income (Whatnot payouts + 1099 if &gt;$600), inventory receipts, shipping receipts, ad spend receipts, and any equipment purchases. Consider a separate business bank account and credit card to make this easier.</div>
+</div>
+
+</main>
+
+<script>
+// ── STATE ─────────────────────────────────────────────────────────
+let breaks   = JSON.parse(localStorage.getItem('rae_breaks')   || '[]');
+let inv      = JSON.parse(localStorage.getItem('rae_inv')      || '[]');
+let shipping = JSON.parse(localStorage.getItem('rae_shipping') || '[]');
+let ads      = JSON.parse(localStorage.getItem('rae_ads')      || '[]');
+let expenses = JSON.parse(localStorage.getItem('rae_expenses') || '[]');
+let payouts  = JSON.parse(localStorage.getItem('rae_payouts')  || '[]');
+let curF = 'today';
+
+const $ = id => document.getElementById(id);
+const save = () => {
+  localStorage.setItem('rae_breaks',   JSON.stringify(breaks));
+  localStorage.setItem('rae_inv',      JSON.stringify(inv));
+  localStorage.setItem('rae_shipping', JSON.stringify(shipping));
+  localStorage.setItem('rae_ads',      JSON.stringify(ads));
+  localStorage.setItem('rae_expenses', JSON.stringify(expenses));
+  localStorage.setItem('rae_payouts',  JSON.stringify(payouts));
+};
+
+// ── UTILS ─────────────────────────────────────────────────────────
+const fmt  = n => '$' + Number(n||0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
+const pct  = n => (Number(n||0)*100).toFixed(1) + '%';
+const roasStr = (r,s) => s > 0 ? (r/s).toFixed(1) + 'x' : '—';
+const mLabel  = d => d ? new Date(d+'T12:00:00').toLocaleString('en-US',{month:'short',year:'numeric'}) : '';
+const today   = () => new Date().toISOString().split('T')[0];
+
+const sportBadge  = s => { const m={NBA:'b-blue',NFL:'b-red',MLB:'b-green',NHL:'b-teal',Soccer:'b-teal',Pokemon:'b-gold',Mixed:'b-purple'}; return `<span class="badge ${m[s]||'b-gold'}">${s||'—'}</span>`; };
+const statusBadge = s => { const m={Paid:'b-green',Pending:'b-gold',Processing:'b-blue'}; return `<span class="badge ${m[s]||'b-gold'}">${s}</span>`; };
+const deductBadge = s => { const m={Yes:'b-green',Maybe:'b-gold',No:'b-red'}; return `<span class="badge ${m[s]||'b-gold'}">${s}</span>`; };
+const carrierBadge = s => `<span class="badge b-orange">${s||'—'}</span>`;
+
+// ── FILTER ────────────────────────────────────────────────────────
+function getR() {
+  const now=new Date(), td=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  if(curF==='today')   return {s:td, e:new Date(td.getTime()+86399999)};
+  if(curF==='week')    { const su=new Date(td); su.setDate(td.getDate()-td.getDay()); const sa=new Date(su); sa.setDate(su.getDate()+6); sa.setHours(23,59,59); return {s:su,e:sa}; }
+  if(curF==='month')   return {s:new Date(now.getFullYear(),now.getMonth(),1), e:new Date(now.getFullYear(),now.getMonth()+1,0,23,59,59)};
+  if(curF==='quarter') { const q=Math.floor(now.getMonth()/3); return {s:new Date(now.getFullYear(),q*3,1),e:new Date(now.getFullYear(),q*3+3,0,23,59,59)}; }
+  if(curF==='year')    return {s:new Date(now.getFullYear(),0,1),e:new Date(now.getFullYear(),11,31,23,59,59)};
+  if(curF==='custom')  { const sv=$('fs').value,ev=$('fe').value; if(sv&&ev) return {s:new Date(sv+'T00:00:00'),e:new Date(ev+'T23:59:59')}; }
+  return {s:new Date(0),e:new Date(9999,0,1)};
+}
+function inR(d) { if(!d) return false; const dt=new Date(d+'T12:00:00'),r=getR(); return dt>=r.s&&dt<=r.e; }
+function pTxt() {
+  const m={today:'Today',week:'This Week',month:'This Month',quarter:'This Quarter',year:'This Year',all:'All Time'};
+  if(curF==='custom'){const s=$('fs').value,e=$('fe').value; return (s&&e)?s+' → '+e:'Custom';}
+  return m[curF]||'All Time';
+}
+function setF(type) {
+  curF=type;
+  document.querySelectorAll('.fb').forEach(b=>b.classList.remove('on'));
+  const idx=['today','week','month','quarter','year','all'].indexOf(type);
+  if(idx>=0) document.querySelectorAll('.fb')[idx].classList.add('on');
+  $('fplabel').textContent='⬦ '+pTxt();
+  renderDash(); renderBreaks();
+}
+
+// ── TABS ──────────────────────────────────────────────────────────
+const TABS=['dash','breaks','perbreak','inv','shipping','ads','expenses','payouts','tax'];
+function sw(name) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  $('panel-'+name).classList.add('active');
+  TABS.forEach((n,i)=>{ if(n===name) document.querySelectorAll('.tab')[i].classList.add('active'); });
+  $('fbar').style.display=(name==='dash'||name==='breaks')?'flex':'none';
+  if(name==='dash')     renderDash();
+  if(name==='breaks')   renderBreaks();
+  if(name==='perbreak') renderPB();
+  if(name==='inv')      renderInv();
+  if(name==='shipping') renderShip();
+  if(name==='ads')      renderAds();
+  if(name==='expenses') renderExp();
+  if(name==='payouts')  renderPayouts();
+  if(name==='tax')      renderTax();
+}
+
+// ── ADD FUNCTIONS ─────────────────────────────────────────────────
+function addBreak() {
+  const date=$('b-date').value, name=$('b-name').value.trim();
+  const sold=parseFloat($('b-sold').value)||0, price=parseFloat($('b-price').value)||0;
+  const feePct=parseFloat($('b-feepct').value)||0.08;
+  const cogs=parseFloat($('b-cogs').value)||0, adsp=parseFloat($('b-adspend').value)||0;
+  if(!date||!name||sold<=0||price<=0){alert('Fill in Date, Name, Spots Sold, and Spot Price.');return;}
+  const gross=sold*price, wnFee=gross*feePct, netRev=gross-wnFee, profit=netRev-cogs-adsp;
+  breaks.unshift({id:Date.now(),date,name,sport:$('b-sport').value,type:$('b-type').value,
+    spots:parseInt($('b-spots').value)||sold,sold,price,feePct,cogs,adsp,gross,wnFee,netRev,profit,
+    notes:$('b-notes').value.trim(),month:mLabel(date)});
+  save();
+  ['b-name','b-spots','b-sold','b-price','b-cogs','b-adspend','b-notes'].forEach(id=>$(id).value='');
+  renderBreaks(); renderDash(); renderPB();
+}
+function addInv() {
+  const date=$('i-date').value, product=$('i-product').value.trim();
+  const qty=parseFloat($('i-qty').value)||1, cost=parseFloat($('i-cost').value)||0;
+  if(!date||!product||cost<=0){alert('Fill in Date, Product, and Cost Per Unit.');return;}
+  inv.unshift({id:Date.now(),date,product,cat:$('i-cat').value,qty,cost,total:qty*cost,
+    brk:$('i-break').value.trim(),status:$('i-status').value,notes:$('i-notes').value.trim()});
+  save();
+  ['i-product','i-break','i-notes'].forEach(id=>$(id).value='');
+  $('i-qty').value=1; $('i-cost').value='';
+  renderInv(); renderDash();
+}
+function addShip() {
+  const date=$('sh-date').value, cost=parseFloat($('sh-cost').value)||0;
+  const charged=parseFloat($('sh-charged').value)||0;
+  if(!date||cost<=0){alert('Fill in Ship Date and Actual Postage Cost.');return;}
+  const pl=charged-cost;
+  shipping.unshift({id:Date.now(),date,buyer:$('sh-buyer').value.trim(),brk:$('sh-break').value.trim(),
+    carrier:$('sh-carrier').value,pkg:$('sh-pkg').value,tracking:$('sh-tracking').value.trim(),
+    cost,charged,pl,items:$('sh-items').value.trim(),notes:$('sh-notes').value.trim(),month:mLabel(date)});
+  save();
+  ['sh-buyer','sh-break','sh-tracking','sh-items','sh-notes'].forEach(id=>$(id).value='');
+  $('sh-cost').value=''; $('sh-charged').value='';
+  renderShip(); renderDash();
+}
+function addAd() {
+  const date=$('a-date').value, amount=parseFloat($('a-amount').value)||0;
+  if(!date||amount<=0){alert('Fill in Date and Amount Spent.');return;}
+  ads.unshift({id:Date.now(),date,type:$('a-type').value,desc:$('a-desc').value.trim(),
+    amount,brk:$('a-break').value.trim(),rev:parseFloat($('a-rev').value)||0,
+    notes:$('a-notes').value.trim(),month:mLabel(date)});
+  save();
+  ['a-desc','a-break','a-notes'].forEach(id=>$(id).value='');
+  $('a-amount').value=''; $('a-rev').value='';
+  renderAds(); renderDash();
+}
+function addExpense() {
+  const date=$('ex-date').value, desc=$('ex-desc').value.trim(), amount=parseFloat($('ex-amount').value)||0;
+  if(!date||!desc||amount<=0){alert('Fill in Date, Description, and Amount.');return;}
+  expenses.unshift({id:Date.now(),date,desc,cat:$('ex-cat').value,amount,
+    recurring:$('ex-recurring').value,taxDed:$('ex-tax').value,
+    notes:$('ex-notes').value.trim(),month:mLabel(date)});
+  save();
+  ['ex-desc','ex-notes'].forEach(id=>$(id).value='');
+  $('ex-amount').value='';
+  renderExp(); renderDash();
+}
+function addPayout() {
+  const date=$('p-date').value, net=parseFloat($('p-net').value)||0;
+  if(!date||net<=0){alert('Fill in Date and Net Payout Received.');return;}
+  payouts.unshift({id:Date.now(),date,period:$('p-period').value.trim(),
+    gross:parseFloat($('p-gross').value)||0,fees:parseFloat($('p-fees').value)||0,net,
+    status:$('p-status').value,method:$('p-method').value,notes:$('p-notes').value.trim()});
+  save();
+  ['p-period','p-notes'].forEach(id=>$(id).value='');
+  ['p-gross','p-fees','p-net'].forEach(id=>$(id).value='');
+  renderPayouts(); renderHdr();
+}
+
+// ── DELETE ────────────────────────────────────────────────────────
+function delBreak(id) {if(!confirm('Remove?'))return;breaks=breaks.filter(b=>b.id!==id);save();renderBreaks();renderDash();renderPB();}
+function delInv(id)   {if(!confirm('Remove?'))return;inv=inv.filter(i=>i.id!==id);save();renderInv();renderDash();}
+function delShip(id)  {if(!confirm('Remove?'))return;shipping=shipping.filter(s=>s.id!==id);save();renderShip();renderDash();}
+function delAd(id)    {if(!confirm('Remove?'))return;ads=ads.filter(a=>a.id!==id);save();renderAds();renderDash();}
+function delExp(id)   {if(!confirm('Remove?'))return;expenses=expenses.filter(e=>e.id!==id);save();renderExp();renderDash();}
+function delPayout(id){if(!confirm('Remove?'))return;payouts=payouts.filter(p=>p.id!==id);save();renderPayouts();renderHdr();}
+
+// ── HEADER ────────────────────────────────────────────────────────
+function renderHdr() {
+  const netRev=breaks.reduce((a,b)=>a+b.netRev,0);
+  const invCost=inv.reduce((a,v)=>a+v.total,0);
+  const shipCost=shipping.reduce((a,s)=>a+s.cost,0);
+  const shipColl=shipping.reduce((a,s)=>a+s.charged,0);
+  const totalAds=ads.reduce((a,v)=>a+v.amount,0);
+  const totalExp=expenses.reduce((a,e)=>a+e.amount,0);
+  const allExp=invCost+(shipCost-shipColl)+totalAds+totalExp;
+  const profit=netRev-allExp;
+  const pending=payouts.filter(p=>p.status!=='Paid').reduce((a,p)=>a+p.net,0);
+  $('h-rev').textContent=fmt(netRev);
+  $('h-expenses').textContent=fmt(allExp);
+  const hp=$('h-profit'); hp.textContent=fmt(profit); hp.style.color=profit>=0?'var(--green)':'var(--red)';
+  $('h-pending').textContent=fmt(pending);
+}
+
+// ── RENDER DASHBOARD ──────────────────────────────────────────────
+function renderDash() {
+  const fb=breaks.filter(b=>inR(b.date));
+  const fa=ads.filter(a=>inR(a.date));
+  const fsh=shipping.filter(s=>inR(s.date));
+  const fex=expenses.filter(e=>inR(e.date));
+  const invCost=inv.reduce((a,v)=>a+v.total,0);
+
+  const gross=fb.reduce((a,b)=>a+b.gross,0);
+  const wnFees=fb.reduce((a,b)=>a+b.wnFee,0);
+  const netRev=fb.reduce((a,b)=>a+b.netRev,0);
+  const totalAds=fa.reduce((a,v)=>a+v.amount,0);
+  const shipCost=fsh.reduce((a,s)=>a+s.cost,0);
+  const shipColl=fsh.reduce((a,s)=>a+s.charged,0);
+  const netShip=shipCost-shipColl; // net shipping expense
+  const totalExp=fex.reduce((a,e)=>a+e.amount,0);
+  const allExp=invCost+netShip+totalAds+totalExp;
+  const profit=netRev-allExp;
+  const margin=gross>0?profit/gross:0;
+
+  $('d-gross').textContent=fmt(gross);
+  $('d-wnfee').textContent=fmt(wnFees);
+  $('d-netrev').textContent=fmt(netRev);
+  $('d-expenses').textContent=fmt(allExp);
+  $('d-inv').textContent=fmt(invCost);
+  $('d-ads').textContent=fmt(totalAds);
+  $('d-ship').textContent=fmt(shipCost);
+  $('d-other').textContent=fmt(totalExp);
+  const pe=$('d-profit'); pe.textContent=fmt(Math.abs(profit)); pe.className='kpi-val '+(profit>=0?'pos':'neg');
+  const me=$('d-margin'); me.textContent=pct(margin); me.className='kpi-val '+(margin>=0?'pos':'neg');
+  const avgP=fb.length?profit/fb.length:0;
+  const ae=$('d-avg'); ae.textContent=fmt(Math.abs(avgP)); ae.className='kpi-val '+(avgP>=0?'pos':'neg');
+  $('d-period-lbl').textContent=pTxt();
+
+  // P&L rows
+  const R=(label,val,sec=false,tot=false) => {
+    if(sec) return `<div class="pl-row pl-sec"><span>${label}</span></div>`;
+    const c=val>0?'var(--green)':val<0?'var(--red)':'var(--muted)';
+    return `<div class="pl-row${tot?' pl-tot':''}"><span class="pl-lbl">${label}</span><span class="pl-val" style="color:${c}">${val<0?'(':''}${fmt(Math.abs(val))}${val<0?')':''}</span></div>`;
+  };
+  $('pl-rows').innerHTML=[
+    R('REVENUE',0,true),
+    R('Gross Revenue',gross),
+    R('(-) Whatnot Platform Fees',-wnFees),
+    R('Net Revenue',netRev,false,true),
+    R('EXPENSES',0,true),
+    R('(-) Inventory / COGS',-invCost),
+    R('(-) Shipping Out (net)',-netShip),
+    R('(-) Ad Spend',-totalAds),
+    R('(-) Other Expenses',-totalExp),
+    R('NET PROFIT',profit,false,true),
+  ].join('');
+
+  // Monthly breakdown
+  const bm={},shm={},am={},im={},exm={};
+  breaks.forEach(b=>{if(!bm[b.month])bm[b.month]={g:0,w:0,nr:0,p:0};bm[b.month].g+=b.gross;bm[b.month].w+=b.wnFee;bm[b.month].nr+=b.netRev;bm[b.month].p+=b.profit;});
+  shipping.forEach(s=>{if(!shm[s.month])shm[s.month]={cost:0,charged:0};shm[s.month].cost+=s.cost;shm[s.month].charged+=s.charged;});
+  ads.forEach(a=>{if(!am[a.month])am[a.month]=0;am[a.month]+=a.amount;});
+  inv.forEach(v=>{const m=mLabel(v.date);if(!im[m])im[m]=0;im[m]+=v.total;});
+  expenses.forEach(e=>{if(!exm[e.month])exm[e.month]=0;exm[e.month]+=e.amount;});
+  const allM=new Set([...Object.keys(bm),...Object.keys(shm),...Object.keys(am),...Object.keys(im),...Object.keys(exm)]);
+  const now=new Date();
+  for(let i=5;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);allM.add(d.toLocaleString('en-US',{month:'short',year:'numeric'}));}
+  const sortedM=[...allM].sort((a,b)=>new Date('1 '+a)-new Date('1 '+b)).slice(-12);
+  $('monthly-tbody').innerHTML=sortedM.map(m=>{
+    const bd=bm[m]||{g:0,w:0,nr:0,p:0},sd=shm[m]||{cost:0,charged:0},ad=am[m]||0,ic=im[m]||0,ex=exm[m]||0;
+    const ns=sd.cost-sd.charged, pr=bd.nr-ic-ns-ad-ex;
+    return `<tr><td>${m}</td><td class="m">${fmt(bd.g)}</td>
+      <td class="m neg">${bd.w>0?'('+fmt(bd.w)+')':'—'}</td>
+      <td class="m" style="color:var(--orange)">${sd.cost>0?'('+fmt(sd.cost)+')':'—'}</td>
+      <td class="m" style="color:#c4b5fd">${ad>0?'('+fmt(ad)+')':'—'}</td>
+      <td class="m neg">${ic>0?'('+fmt(ic)+')':'—'}</td>
+      <td class="m neg">${ex>0?'('+fmt(ex)+')':'—'}</td>
+      <td class="m ${pr>=0?'pos':'neg'}">${fmt(pr)}</td></tr>`;
+  }).reverse().join('');
+
+  // Recent breaks
+  const recent=[...fb].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,5);
+  $('d-recent').innerHTML=recent.length?recent.map(b=>`<tr>
+    <td>${b.date}</td><td>${b.name}</td><td>${sportBadge(b.sport)}</td>
+    <td class="m">${b.sold}/${b.spots}</td><td class="m">${fmt(b.gross)}</td>
+    <td class="m ${b.netRev>=0?'pos':'neg'}">${fmt(b.netRev)}</td>
+    <td class="m ${b.profit>=0?'pos':'neg'}">${fmt(b.profit)}</td>
+  </tr>`).join(''):`<tr><td colspan="7" class="em">No breaks in this period</td></tr>`;
+
+  renderHdr();
+}
+
+// ── RENDER BREAKS ─────────────────────────────────────────────────
+function renderBreaks() {
+  const fb=breaks.filter(b=>inR(b.date));
+  $('b-cnt-lbl').textContent=fb.length+' entries — '+pTxt();
+  $('b-tbody').innerHTML=fb.length?fb.map(b=>`<tr>
+    <td>${b.date}</td><td>${b.name}</td><td>${sportBadge(b.sport)}</td>
+    <td><span class="badge b-blue">${b.type||'—'}</span></td>
+    <td class="m">${b.sold}/${b.spots}</td><td class="m">${fmt(b.price)}</td>
+    <td class="m">${fmt(b.gross)}</td><td class="m neg">(${fmt(b.wnFee)})</td>
+    <td class="m neg">${b.cogs>0?'('+fmt(b.cogs)+')':'—'}</td>
+    <td class="m" style="color:#c4b5fd">${b.adsp>0?'('+fmt(b.adsp)+')':'—'}</td>
+    <td class="m ${b.netRev>=0?'pos':'neg'}">${fmt(b.netRev)}</td>
+    <td class="m ${b.profit>=0?'pos':'neg'}"><b>${fmt(b.profit)}</b></td>
+    <td><button class="btn-d" onclick="delBreak(${b.id})">✕</button></td>
+  </tr>`).join(''):`<tr><td colspan="13" class="em">🃏 No breaks in this period</td></tr>`;
+}
+
+// ── RENDER PER-BREAK ──────────────────────────────────────────────
+function renderPB() {
+  const sorted=[...breaks].sort((a,b)=>b.profit-a.profit);
+  $('pb-cnt-lbl').textContent=sorted.length+' breaks';
+  if(sorted.length){$('pb-top').textContent=sorted[0].name;$('pb-bot').textContent=sorted[sorted.length-1].name;}
+  const sportMap={},typeMap={};
+  breaks.forEach(b=>{
+    if(b.sport){if(!sportMap[b.sport])sportMap[b.sport]={profit:0,cnt:0,gross:0};sportMap[b.sport].profit+=b.profit;sportMap[b.sport].cnt++;sportMap[b.sport].gross+=b.gross;}
+    if(b.type){if(!typeMap[b.type])typeMap[b.type]={profit:0,cnt:0,gross:0};typeMap[b.type].profit+=b.profit;typeMap[b.type].cnt++;typeMap[b.type].gross+=b.gross;}
+  });
+  const sR=Object.entries(sportMap).sort((a,b)=>b[1].profit-a[1].profit);
+  const tR=Object.entries(typeMap).sort((a,b)=>b[1].profit-a[1].profit);
+  $('pb-sport').textContent=sR.length?sR[0][0]:'—';
+  $('pb-type').textContent=tR.length?tR[0][0]:'—';
+  const maxP=sorted.length?Math.max(...sorted.map(b=>Math.abs(b.profit)),1):1;
+  $('pb-tbody').innerHTML=sorted.length?sorted.map((b,i)=>{
+    const margin=b.gross>0?b.profit/b.gross:0;
+    const bw=Math.min(100,(Math.abs(b.profit)/maxP)*100);
+    const bc=b.profit>=0?'var(--green)':'var(--red)';
+    return `<tr>
+      <td class="m" style="color:var(--muted)">${i+1}</td><td>${b.date}</td>
+      <td><div>${b.name}</div><div class="pb-bar-wrap"><div class="pb-bar" style="width:${bw}%;background:${bc}"></div></div></td>
+      <td>${sportBadge(b.sport)}</td><td><span class="badge b-blue">${b.type||'—'}</span></td>
+      <td class="m">${fmt(b.gross)}</td><td class="m neg">(${fmt(b.wnFee)})</td>
+      <td class="m neg">${b.cogs>0?'('+fmt(b.cogs)+')':'—'}</td>
+      <td class="m" style="color:#c4b5fd">${b.adsp>0?'('+fmt(b.adsp)+')':'—'}</td>
+      <td class="m ${b.netRev>=0?'pos':'neg'}">${fmt(b.netRev)}</td>
+      <td class="m ${b.profit>=0?'pos':'neg'}"><b>${fmt(b.profit)}</b></td>
+      <td class="m ${margin>=0?'pos':'neg'}">${pct(margin)}</td></tr>`;
+  }).join(''):`<tr><td colspan="12" class="em">🃏 No breaks logged yet</td></tr>`;
+  $('pb-sport-tbody').innerHTML=sR.length?sR.map(([s,d])=>`<tr><td>${sportBadge(s)}</td><td class="m">${d.cnt}</td><td class="m">${fmt(d.gross)}</td><td class="m ${d.profit>=0?'pos':'neg'}">${fmt(d.profit)}</td><td class="m ${(d.profit/d.cnt)>=0?'pos':'neg'}">${fmt(d.profit/d.cnt)}</td></tr>`).join(''):`<tr><td colspan="5" class="em">No data</td></tr>`;
+  $('pb-type-tbody').innerHTML=tR.length?tR.map(([t,d])=>`<tr><td><span class="badge b-blue">${t}</span></td><td class="m">${d.cnt}</td><td class="m">${fmt(d.gross)}</td><td class="m ${d.profit>=0?'pos':'neg'}">${fmt(d.profit)}</td><td class="m ${(d.profit/d.cnt)>=0?'pos':'neg'}">${fmt(d.profit/d.cnt)}</td></tr>`).join(''):`<tr><td colspan="5" class="em">No data</td></tr>`;
+}
+
+// ── RENDER INVENTORY ──────────────────────────────────────────────
+function renderInv() {
+  $('i-cnt-lbl').textContent=inv.length+' entries';
+  const sb=s=>({InStock:'b-blue','In Stock':'b-blue',Broken:'b-gold',Sold:'b-green',Reserved:'b-red'}[s.replace(' ','')]||'b-blue');
+  $('i-tbody').innerHTML=inv.length?inv.map((v,i)=>`<tr>
+    <td>${v.date}</td><td><b>${v.product}</b></td><td><span class="badge b-gold">${v.cat||'—'}</span></td>
+    <td class="m">${v.qty}</td><td class="m">${fmt(v.cost)}</td><td class="m neg">(${fmt(v.total)})</td>
+    <td>${v.brk||'—'}</td><td><span class="badge ${sb(v.status)}">${v.status}</span></td>
+    <td>${v.notes||'—'}</td><td><button class="btn-d" onclick="delInv(${v.id})">✕</button></td>
+  </tr>`).join(''):`<tr><td colspan="10" class="em">📦 No inventory logged yet</td></tr>`;
+}
+
+// ── RENDER SHIPPING ───────────────────────────────────────────────
+function renderShip() {
+  const totalCost=shipping.reduce((a,s)=>a+s.cost,0);
+  const totalCharged=shipping.reduce((a,s)=>a+s.charged,0);
+  const totalPL=totalCharged-totalCost;
+  $('sh-kpi-cost').textContent=fmt(totalCost);
+  $('sh-kpi-charged').textContent=fmt(totalCharged);
+  const pe=$('sh-kpi-pl'); pe.textContent=fmt(Math.abs(totalPL)); pe.className='kpi-val '+(totalPL>=0?'pos':'neg');
+  $('sh-kpi-cnt').textContent=shipping.length;
+  $('sh-cnt-lbl').textContent=shipping.length+' entries';
+  $('sh-tbody').innerHTML=shipping.length?shipping.map(s=>{
+    const plCls=s.pl>0?'pos':s.pl<0?'neg':'';
+    return `<tr>
+      <td>${s.date}</td><td>${s.buyer||'—'}</td><td>${s.brk||'—'}</td>
+      <td>${carrierBadge(s.carrier)}</td><td style="font-size:12px">${s.pkg||'—'}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:11px">${s.tracking||'—'}</td>
+      <td class="m neg">(${fmt(s.cost)})</td>
+      <td class="m">${s.charged>0?fmt(s.charged):'Free ship'}</td>
+      <td class="m ${plCls}"><b>${s.pl>0?'+':''}${fmt(s.pl)}</b></td>
+      <td style="font-size:12px">${s.items||'—'}</td>
+      <td>${s.notes||'—'}</td>
+      <td><button class="btn-d" onclick="delShip(${s.id})">✕</button></td>
+    </tr>`;
+  }).join(''):`<tr><td colspan="12" class="em">📬 No shipments logged yet</td></tr>`;
+}
+
+// ── RENDER ADS ────────────────────────────────────────────────────
+function renderAds() {
+  const total=ads.reduce((a,v)=>a+v.amount,0), rev=ads.reduce((a,v)=>a+v.rev,0);
+  $('a-total').textContent=fmt(total); $('a-rev-kpi').textContent=fmt(rev);
+  $('a-roas').textContent=roasStr(rev,total); $('a-cnt-kpi').textContent=ads.length;
+  $('a-cnt-lbl').textContent=ads.length+' entries';
+  $('a-tbody').innerHTML=ads.length?ads.map(a=>`<tr>
+    <td>${a.date}</td><td><span class="badge b-purple">${a.type||'—'}</span></td>
+    <td>${a.desc||'—'}</td><td class="m neg">(${fmt(a.amount)})</td>
+    <td>${a.brk||'—'}</td><td class="m pos">${a.rev>0?fmt(a.rev):'—'}</td>
+    <td class="m">${a.rev>0?roasStr(a.rev,a.amount):'—'}</td>
+    <td>${a.notes||'—'}</td>
+    <td><button class="btn-d" onclick="delAd(${a.id})">✕</button></td>
+  </tr>`).join(''):`<tr><td colspan="9" class="em">📣 No ad spend logged yet</td></tr>`;
+}
+
+// ── RENDER EXPENSES ───────────────────────────────────────────────
+function renderExp() {
+  const total=expenses.reduce((a,e)=>a+e.amount,0);
+  const deduct=expenses.filter(e=>e.taxDed==='Yes').reduce((a,e)=>a+e.amount,0);
+  const monthly=expenses.filter(e=>e.recurring==='Monthly').reduce((a,e)=>a+e.amount,0);
+  $('ex-total').textContent=fmt(total); $('ex-deduct').textContent=fmt(deduct);
+  $('ex-monthly').textContent=fmt(monthly); $('ex-cnt-kpi').textContent=expenses.length;
+  $('ex-cnt-lbl').textContent=expenses.length+' entries';
+  $('ex-tbody').innerHTML=expenses.length?expenses.map(e=>`<tr>
+    <td>${e.date}</td><td><b>${e.desc}</b></td>
+    <td><span class="badge b-blue">${e.cat||'—'}</span></td>
+    <td class="m neg">(${fmt(e.amount)})</td>
+    <td><span class="badge ${e.recurring==='No'?'b-teal':e.recurring==='Monthly'?'b-gold':'b-purple'}">${e.recurring}</span></td>
+    <td>${deductBadge(e.taxDed)}</td>
+    <td>${e.notes||'—'}</td>
+    <td><button class="btn-d" onclick="delExp(${e.id})">✕</button></td>
+  </tr>`).join(''):`<tr><td colspan="8" class="em">🔧 No expenses logged yet</td></tr>`;
+}
+
+// ── RENDER PAYOUTS ────────────────────────────────────────────────
+function renderPayouts() {
+  const paid=payouts.filter(p=>p.status==='Paid').reduce((a,p)=>a+p.net,0);
+  const pend=payouts.filter(p=>p.status!=='Paid').reduce((a,p)=>a+p.net,0);
+  const pgross=payouts.reduce((a,p)=>a+p.gross,0);
+  $('po-paid').textContent=fmt(paid); $('po-pend').textContent=fmt(pend);
+  $('po-gross').textContent=fmt(pgross); $('po-cnt').textContent=payouts.length;
+  $('po-cnt-lbl').textContent=payouts.length+' entries';
+  $('po-tbody').innerHTML=payouts.length?payouts.map(p=>`<tr>
+    <td>${p.date}</td><td>${p.period||'—'}</td>
+    <td class="m">${fmt(p.gross)}</td>
+    <td class="m neg">${p.fees>0?'('+fmt(p.fees)+')':'—'}</td>
+    <td class="m pos"><b>${fmt(p.net)}</b></td>
+    <td><span class="badge b-blue">${p.method}</span></td>
+    <td>${statusBadge(p.status)}</td>
+    <td>${p.notes||'—'}</td>
+    <td><button class="btn-d" onclick="delPayout(${p.id})">✕</button></td>
+  </tr>`).join(''):`<tr><td colspan="9" class="em">💰 No payouts logged yet</td></tr>`;
+}
+
+// ── RENDER TAX ────────────────────────────────────────────────────
+function renderTax() {
+  const yr=new Date().getFullYear();
+  $('tx-year-lbl').textContent='Year '+yr;
+  const ytd = d => { if(!d) return false; const dt=new Date(d+'T12:00:00'); return dt.getFullYear()===yr; };
+
+  const gross   = breaks.filter(b=>ytd(b.date)).reduce((a,b)=>a+b.gross,0);
+  const wnFees  = breaks.filter(b=>ytd(b.date)).reduce((a,b)=>a+b.wnFee,0);
+  const netRev  = gross-wnFees;
+  const invCost = inv.filter(v=>ytd(v.date)).reduce((a,v)=>a+v.total,0);
+  const shipCost= shipping.filter(s=>ytd(s.date)).reduce((a,s)=>a+s.cost,0);
+  const shipColl= shipping.filter(s=>ytd(s.date)).reduce((a,s)=>a+s.charged,0);
+  const netShip = Math.max(0,shipCost-shipColl);
+  const totalAds= ads.filter(a=>ytd(a.date)).reduce((a,v)=>a+v.amount,0);
+  const taxDeduct= expenses.filter(e=>ytd(e.date)&&e.taxDed==='Yes').reduce((a,e)=>a+e.amount,0);
+  const taxMaybe= expenses.filter(e=>ytd(e.date)&&e.taxDed==='Maybe').reduce((a,e)=>a+e.amount,0);
+  const allDeduct= wnFees+invCost+netShip+totalAds+taxDeduct;
+  const netInc  = Math.max(0,netRev-allDeduct);
+  const seTax   = netInc*0.153;
+
+  $('tx-gross').textContent=fmt(gross);
+  $('tx-exp').textContent=fmt(allDeduct);
+  $('tx-net').textContent=fmt(netInc);
+  $('tx-se').textContent=fmt(seTax);
+
+  $('tx-rev-rows').innerHTML=[
+    {l:'Gross Break Revenue',v:gross},
+    {l:'(-) Whatnot Platform Fees',v:-wnFees},
+    {l:'(+) Shipping Collected',v:shipColl},
+    {l:'Net Revenue',v:netRev,tot:true},
+  ].map(r=>`<div class="tax-row ${r.tot?'total-row':''}"><span class="tax-lbl">${r.l}</span><span class="tax-val" style="color:${r.v>=0?'var(--green)':'var(--red)'}">${r.v<0?'(':''}${fmt(Math.abs(r.v))}${r.v<0?')':''}</span></div>`).join('');
+
+  $('tx-exp-rows').innerHTML=[
+    {l:'Inventory / COGS',v:invCost},
+    {l:'Outbound Shipping (net)',v:netShip},
+    {l:'Ad Spend',v:totalAds},
+    {l:'Other Expenses (deductible)',v:taxDeduct},
+    {l:'Other Expenses (maybe — confirm w/ CPA)',v:taxMaybe,maybe:true},
+    {l:'Total Deductible Expenses',v:allDeduct,tot:true},
+  ].map(r=>`<div class="tax-row ${r.tot?'total-row':''} ${r.maybe?'highlight':''}"><span class="tax-lbl">${r.l}</span><span class="tax-val" style="color:${r.maybe?'var(--gold)':'var(--red)'}">(${fmt(r.v)})</span></div>`).join('');
+
+  // Quarterly breakdown
+  const quarters=[
+    {label:'Q1',name:'Jan–Mar',months:[0,1,2]},
+    {label:'Q2',name:'Apr–Jun',months:[3,4,5]},
+    {label:'Q3',name:'Jul–Sep',months:[6,7,8]},
+    {label:'Q4',name:'Oct–Dec',months:[9,10,11]},
+  ];
+  $('tx-q-tbody').innerHTML=quarters.map(q=>{
+    const inQ=d=>{ if(!d) return false; const dt=new Date(d+'T12:00:00'); return dt.getFullYear()===yr && q.months.includes(dt.getMonth()); };
+    const qGross=breaks.filter(b=>inQ(b.date)).reduce((a,b)=>a+b.gross,0);
+    const qFees=breaks.filter(b=>inQ(b.date)).reduce((a,b)=>a+b.wnFee,0);
+    const qInv=inv.filter(v=>inQ(v.date)).reduce((a,v)=>a+v.total,0);
+    const qSh=Math.max(0,shipping.filter(s=>inQ(s.date)).reduce((a,s)=>a+s.cost,0)-shipping.filter(s=>inQ(s.date)).reduce((a,s)=>a+s.charged,0));
+    const qAds=ads.filter(a=>inQ(a.date)).reduce((a,v)=>a+v.amount,0);
+    const qExp=expenses.filter(e=>inQ(e.date)&&e.taxDed==='Yes').reduce((a,e)=>a+e.amount,0);
+    const qAllExp=qFees+qInv+qSh+qAds+qExp;
+    const qNet=Math.max(0,(qGross-qFees)-qAllExp+qFees);
+    const qSE=qNet*0.153;
+    const estDates={Q1:'Apr 15',Q2:'Jun 15',Q3:'Sep 15',Q4:'Jan 15 (next yr)'};
+    return `<tr>
+      <td><b>${q.label}</b> <span style="color:var(--muted);font-size:12px">${q.name}</span></td>
+      <td style="color:var(--gold);font-size:12px">Est. due ${estDates[q.label]}</td>
+      <td class="m">${fmt(qGross)}</td>
+      <td class="m neg">${qAllExp>0?'('+fmt(qAllExp)+')':'—'}</td>
+      <td class="m ${qNet>=0?'pos':'neg'}">${fmt(qNet)}</td>
+      <td class="m" style="color:var(--purple)">${fmt(qSE)}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── EXPORT TO XLSX ────────────────────────────────────────────────
+function exportXLSX() {
+  const btn = $('export-btn');
+  btn.textContent = '⏳ Building…';
+  btn.disabled = true;
+
+  setTimeout(() => {
+    try {
+      const wb = XLSX.utils.book_new();
+      const n = v => Number(v) || 0;
+      const stamp = new Date().toLocaleDateString('en-US');
+
+      // ── Sheet: Breaks ──
+      const breakRows = [
+        ['Date','Break Name','Sport','Type','Total Spots','Spots Sold','Spot Price','WN Fee %','Gross Revenue','WN Fee $','COGS','Ad Spend Linked','Net Revenue','Profit','Notes','Month']
+      ];
+      breaks.forEach(b => breakRows.push([
+        b.date, b.name, b.sport||'', b.type||'',
+        n(b.spots), n(b.sold), n(b.price), n(b.feePct),
+        n(b.gross), n(b.wnFee), n(b.cogs), n(b.adsp),
+        n(b.netRev), n(b.profit), b.notes||'', b.month||''
+      ]));
+      const wsBreaks = XLSX.utils.aoa_to_sheet(breakRows);
+      wsBreaks['!cols'] = [10,24,10,16,12,12,12,12,16,12,12,14,14,12,24,12].map(w=>({wch:w}));
+      XLSX.utils.book_append_sheet(wb, wsBreaks, 'Break Log');
+
+      // ── Sheet: Inventory ──
+      const invRows = [
+        ['Date','Product / Set','Category','Qty','Cost Per Unit','Total Cost','Assigned Break','Status','Notes']
+      ];
+      inv.forEach(v => invRows.push([
+        v.date, v.product, v.cat||'', n(v.qty),
+        n(v.cost), n(v.total), v.brk||'', v.status||'', v.notes||''
+      ]));
+      const wsInv = XLSX.utils.aoa_to_sheet(invRows);
+      wsInv['!cols'] = [10,26,12,8,14,14,22,12,24].map(w=>({wch:w}));
+      XLSX.utils.book_append_sheet(wb, wsInv, 'Inventory');
+
+      // ── Sheet: Shipping Out ──
+      const shipRows = [
+        ['Ship Date','Buyer / Winner','Linked Break','Carrier','Package Type','Tracking #','Postage Cost','Collected from Buyer','Shipping P&L','Items','Notes','Month']
+      ];
+      shipping.forEach(s => shipRows.push([
+        s.date, s.buyer||'', s.brk||'', s.carrier||'', s.pkg||'',
+        s.tracking||'', n(s.cost), n(s.charged), n(s.pl),
+        s.items||'', s.notes||'', s.month||''
+      ]));
+      const wsShip = XLSX.utils.aoa_to_sheet(shipRows);
+      wsShip['!cols'] = [10,20,20,20,22,18,14,18,14,18,20,12].map(w=>({wch:w}));
+      XLSX.utils.book_append_sheet(wb, wsShip, 'Shipping Out');
+
+      // ── Sheet: Ad Spend ──
+      const adRows = [
+        ['Date','Ad Type','Campaign / Description','Amount Spent','Linked Break','Revenue Attributed','ROAS','Notes','Month']
+      ];
+      ads.forEach(a => adRows.push([
+        a.date, a.type||'', a.desc||'', n(a.amount),
+        a.brk||'', n(a.rev),
+        a.rev > 0 ? Number((a.rev / a.amount).toFixed(2)) : '',
+        a.notes||'', a.month||''
+      ]));
+      const wsAds = XLSX.utils.aoa_to_sheet(adRows);
+      wsAds['!cols'] = [10,24,28,14,22,18,8,22,12].map(w=>({wch:w}));
+      XLSX.utils.book_append_sheet(wb, wsAds, 'Ad Spend');
+
+      // ── Sheet: Other Expenses ──
+      const expRows = [
+        ['Date','Description','Category','Amount','Recurring','Tax Deductible','Notes / Vendor','Month']
+      ];
+      expenses.forEach(e => expRows.push([
+        e.date, e.desc, e.cat||'', n(e.amount),
+        e.recurring||'', e.taxDed||'', e.notes||'', e.month||''
+      ]));
+      const wsExp = XLSX.utils.aoa_to_sheet(expRows);
+      wsExp['!cols'] = [10,28,24,12,12,14,24,12].map(w=>({wch:w}));
+      XLSX.utils.book_append_sheet(wb, wsExp, 'Other Expenses');
+
+      // ── Sheet: Payouts ──
+      const poRows = [
+        ['Payout Date','Period Covered','Gross Earnings','WN Fees Deducted','Net Received','Status','Payout Method','Notes']
+      ];
+      payouts.forEach(p => poRows.push([
+        p.date, p.period||'', n(p.gross), n(p.fees), n(p.net),
+        p.status||'', p.method||'', p.notes||''
+      ]));
+      const wsPo = XLSX.utils.aoa_to_sheet(poRows);
+      wsPo['!cols'] = [12,18,16,18,14,12,16,24].map(w=>({wch:w}));
+      XLSX.utils.book_append_sheet(wb, wsPo, 'Payouts');
+
+      // ── Sheet: P&L Summary ──
+      const gross    = breaks.reduce((a,b)=>a+n(b.gross),0);
+      const wnFees   = breaks.reduce((a,b)=>a+n(b.wnFee),0);
+      const netRev   = breaks.reduce((a,b)=>a+n(b.netRev),0);
+      const invCost  = inv.reduce((a,v)=>a+n(v.total),0);
+      const shipCost = shipping.reduce((a,s)=>a+n(s.cost),0);
+      const shipColl = shipping.reduce((a,s)=>a+n(s.charged),0);
+      const netShip  = shipCost - shipColl;
+      const totalAds = ads.reduce((a,v)=>a+n(v.amount),0);
+      const totalExp = expenses.reduce((a,e)=>a+n(e.amount),0);
+      const profit   = netRev - invCost - netShip - totalAds - totalExp;
+
+      const plRows = [
+        ['RippinAintEasy — P&L Summary', `Exported ${stamp}`],
+        [],
+        ['REVENUE',''],
+        ['Gross Revenue', gross],
+        ['(-) Whatnot Platform Fees', -wnFees],
+        ['(+) Shipping Collected from Buyers', shipColl],
+        ['Net Revenue', netRev],
+        [],
+        ['EXPENSES',''],
+        ['(-) Inventory / COGS', -invCost],
+        ['(-) Outbound Shipping Paid', -shipCost],
+        ['(-) Ad Spend', -totalAds],
+        ['(-) Other Expenses', -totalExp],
+        ['Total Expenses', -(invCost + netShip + totalAds + totalExp)],
+        [],
+        ['NET PROFIT / (LOSS)', profit],
+        [],
+        ['STATS',''],
+        ['Total Breaks Logged', breaks.length],
+        ['Avg Profit per Break', breaks.length ? profit/breaks.length : 0],
+        ['Profit Margin %', gross > 0 ? profit/gross : 0],
+      ];
+      const wsPL = XLSX.utils.aoa_to_sheet(plRows);
+      wsPL['!cols'] = [{wch:36},{wch:18}];
+      XLSX.utils.book_append_sheet(wb, wsPL, 'P&L Summary');
+
+      // ── Download ──
+      const filename = `RippinAintEasy_Backup_${stamp.replace(/\//g,'-')}.xlsx`;
+      XLSX.writeFile(wb, filename);
+
+      btn.textContent = '✓ Downloaded!';
+      btn.style.color = 'var(--teal)';
+      btn.style.borderColor = 'var(--teal)';
+      setTimeout(() => {
+        btn.textContent = '⬇ Export .xlsx';
+        btn.style.color = 'var(--muted)';
+        btn.style.borderColor = 'var(--border)';
+        btn.disabled = false;
+      }, 2500);
+
+    } catch(e) {
+      btn.textContent = '⬇ Export .xlsx';
+      btn.disabled = false;
+      alert('Export failed: ' + e.message);
+    }
+  }, 50);
+}
+
+// ── INIT ──────────────────────────────────────────────────────────
+const td=today();
+['b-date','i-date','sh-date','a-date','ex-date','p-date','fe'].forEach(id=>$(id).value=td);
+const wa=new Date(); wa.setDate(wa.getDate()-7);
+$('fs').value=wa.toISOString().split('T')[0];
+setF('today');
+renderInv(); renderShip(); renderAds(); renderExp(); renderPayouts();
+</script>
+</body>
+</html>

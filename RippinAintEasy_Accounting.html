@@ -215,6 +215,7 @@ td.pos{color:var(--green)}td.neg{color:var(--red)}
 <!-- ═══ BREAK LOG ════════════════════════════════════════════════════ -->
 <div class="panel" id="panel-breaks">
   <div class="sec">Add New Break</div>
+  <div class="callout teal" style="margin-bottom:14px">💡 Enter the <b>Total Revenue</b> Whatnot shows for the stream, and the <b>Actual Payout</b> you received. The app calculates your exact commission + CC fees automatically from the difference.</div>
   <div class="tw" style="padding:16px;margin-bottom:18px">
     <div class="fg-grid">
       <div class="fg"><label>Date</label><input type="date" id="b-date"></div>
@@ -226,13 +227,10 @@ td.pos{color:var(--green)}td.neg{color:var(--red)}
         <select id="b-type"><option value="">Select…</option><option>Random</option><option>Pick Your Team</option><option>Hit Draft</option><option>Serial</option><option>Case Break</option><option>Other</option></select>
       </div>
       <div class="fg"><label>Total Spots Available</label><input type="number" id="b-spots" placeholder="0" min="0"></div>
-      <div class="fg"><label>Spots Sold</label><input type="number" id="b-sold" placeholder="0" min="0" oninput="updateCCPreview()"></div>
-      <div class="fg"><label>Spot Price ($)</label><input type="number" id="b-price" placeholder="0.00" step="0.01" oninput="updateCCPreview()"></div>
-      <div class="fg"><label>Avg Shipping Per Buyer ($) <span style="color:var(--muted);font-size:9px">for CC fee calc</span></label><input type="number" id="b-avgship" placeholder="e.g. 9.21" step="0.01" value="9.21" oninput="updateCCPreview()"></div>
-      <div class="fg"><label>WN Commission % <span style="color:var(--muted);font-size:9px">on sale price</span></label>
-        <select id="b-feepct"><option value="0.08">8% (standard)</option><option value="0.09">9%</option><option value="0.10">10%</option><option value="0.07">7%</option><option value="0.06">6%</option></select>
-      </div>
-      <div class="fg"><label>CC Processing <span style="color:var(--muted);font-size:9px">2.9% + $0.30/order</span></label><input type="text" id="b-ccfee-preview" placeholder="auto-calculated" readonly style="color:var(--gold);cursor:default"></div>
+      <div class="fg"><label>Spots Sold</label><input type="number" id="b-sold" placeholder="0" min="0"></div>
+      <div class="fg"><label>Total Stream Revenue ($) <span style="color:var(--muted);font-size:9px">from Whatnot dashboard</span></label><input type="number" id="b-gross" placeholder="0.00" step="0.01" oninput="updateFeePreview()"></div>
+      <div class="fg"><label>Actual Payout Received ($) <span style="color:var(--muted);font-size:9px">what hit your account</span></label><input type="number" id="b-payout" placeholder="0.00" step="0.01" oninput="updateFeePreview()"></div>
+      <div class="fg"><label>Total WN Fees <span style="color:var(--muted);font-size:9px">commission + CC (auto)</span></label><input type="text" id="b-fee-preview" placeholder="enter revenue + payout" readonly style="color:var(--gold);cursor:default"></div>
       <div class="fg"><label>Inventory Cost / COGS ($)</label><input type="number" id="b-cogs" placeholder="0.00" step="0.01"></div>
       <div class="fg"><label>Ad Spend Linked ($)</label><input type="number" id="b-adspend" placeholder="0.00" step="0.01"></div>
       <div class="fg"><label>Notes</label><input type="text" id="b-notes" placeholder="Optional"></div>
@@ -242,7 +240,7 @@ td.pos{color:var(--green)}td.neg{color:var(--red)}
   <div class="sec">Break History</div>
   <div class="tw">
     <div class="th"><b>Filtered Breaks</b><span id="b-cnt-lbl">0 entries</span></div>
-    <table><thead><tr><th>Date</th><th>Break Name</th><th>Sport</th><th>Type</th><th>Spots Sold</th><th>Spot $</th><th>Gross</th><th>WN Commission</th><th>CC Processing</th><th>Total WN Fees</th><th>COGS</th><th>Ad $</th><th>Net Rev</th><th>Profit</th><th></th></tr></thead>
+    <table><thead><tr><th>Date</th><th>Break Name</th><th>Sport</th><th>Type</th><th>Spots Sold</th><th>Gross Revenue</th><th>Total WN Fees</th><th>Payout Received</th><th>COGS</th><th>Ad $</th><th>Net Profit</th><th></th></tr></thead>
     <tbody id="b-tbody"></tbody></table>
   </div>
 </div>
@@ -259,7 +257,7 @@ td.pos{color:var(--green)}td.neg{color:var(--red)}
   <div class="sec">All Breaks — Ranked by Profit</div>
   <div class="tw">
     <div class="th"><b>Per-Break P&L</b><span id="pb-cnt-lbl">0 breaks</span></div>
-    <table><thead><tr><th>#</th><th>Date</th><th>Break Name</th><th>Sport</th><th>Type</th><th>Gross</th><th>WN Comm.</th><th>CC Fee</th><th>COGS</th><th>Ad $</th><th>Net Rev</th><th>Profit</th><th>Margin</th></tr></thead>
+    <table><thead><tr><th>#</th><th>Date</th><th>Break Name</th><th>Sport</th><th>Type</th><th>Gross Revenue</th><th>Total WN Fees</th><th>Payout Received</th><th>COGS</th><th>Ad $</th><th>Net Profit</th><th>Margin</th></tr></thead>
     <tbody id="pb-tbody"></tbody></table>
   </div>
   <div class="pl-grid">
@@ -568,41 +566,34 @@ function sw(name) {
 
 // ── ADD FUNCTIONS ─────────────────────────────────────────────────
 // Live CC fee preview as user types
-function updateCCPreview() {
-  const sold  = parseFloat($('b-sold').value)  || 0;
-  const price = parseFloat($('b-price').value) || 0;
-  const avgShip = parseFloat($('b-avgship').value) || 0;
-  if (sold > 0 && price > 0) {
-    // CC fee = 2.9% of (spot price + avg shipping per spot) + $0.30 per order
-    // Each spot = one order/buyer
-    const ccPerSpot = (price + avgShip) * 0.029 + 0.30;
-    const totalCC   = ccPerSpot * sold;
-    $('b-ccfee-preview').value = '$' + totalCC.toFixed(2) + ' (' + sold + ' orders)';
+function updateFeePreview() {
+  const gross  = parseFloat($('b-gross').value)  || 0;
+  const payout = parseFloat($('b-payout').value) || 0;
+  if (gross > 0 && payout > 0) {
+    const fees = gross - payout;
+    const feePct = gross > 0 ? (fees/gross*100).toFixed(1) : 0;
+    $('b-fee-preview').value = '$' + fees.toFixed(2) + ' (' + feePct + '% effective)';
   } else {
-    $('b-ccfee-preview').value = '';
+    $('b-fee-preview').value = '';
   }
 }
 
 function addBreak() {
   const date=$('b-date').value, name=$('b-name').value.trim();
-  const sold=parseFloat($('b-sold').value)||0, price=parseFloat($('b-price').value)||0;
-  const feePct=parseFloat($('b-feepct').value)||0.08;
-  const avgShip=parseFloat($('b-avgship').value)||0;
+  const gross=parseFloat($('b-gross').value)||0;
+  const payout=parseFloat($('b-payout').value)||0;
   const cogs=parseFloat($('b-cogs').value)||0, adsp=parseFloat($('b-adspend').value)||0;
-  if(!date||!name||sold<=0||price<=0){alert('Fill in Date, Name, Spots Sold, and Spot Price.');return;}
-  const gross      = sold * price;
-  const commission = gross * feePct;                          // 8% on sale price only
-  const ccFee      = ((price + avgShip) * 0.029 + 0.30) * sold; // 2.9% of (price+ship) + $0.30 per order
-  const wnFee      = commission + ccFee;                     // total Whatnot takes
-  const netRev     = gross - wnFee;
-  const profit     = netRev - cogs - adsp;
+  if(!date||!name||gross<=0){alert('Fill in Date, Break Name, and Total Stream Revenue.');return;}
+  const wnFee  = gross - payout;   // exact total fees = revenue minus what you actually got
+  const netRev = payout;           // your actual cash from Whatnot
+  const profit = netRev - cogs - adsp;
   breaks.unshift({id:Date.now(),date,name,sport:$('b-sport').value,type:$('b-type').value,
-    spots:parseInt($('b-spots').value)||sold,sold,price,feePct,avgShip,
-    commission,ccFee,wnFee,cogs,adsp,gross,netRev,profit,
-    notes:$('b-notes').value.trim(),month:mLabel(date)});
+    spots:parseInt($('b-spots').value)||0, sold:parseInt($('b-sold').value)||0,
+    gross, payout, wnFee, cogs, adsp, netRev, profit,
+    notes:$('b-notes').value.trim(), month:mLabel(date)});
   save();
-  ['b-name','b-spots','b-sold','b-price','b-cogs','b-adspend','b-notes'].forEach(id=>$(id).value='');
-  $('b-ccfee-preview').value='';
+  ['b-name','b-spots','b-sold','b-gross','b-payout','b-cogs','b-adspend','b-notes'].forEach(id=>$(id).value='');
+  $('b-fee-preview').value='';
   renderBreaks(); renderDash(); renderPB();
 }
 function addInv() {
@@ -697,11 +688,9 @@ function renderDash() {
   const fex=expenses.filter(e=>inR(e.date));
   const invCost=inv.reduce((a,v)=>a+v.total,0);
 
-  const gross=fb.reduce((a,b)=>a+b.gross,0);
-  const commission=fb.reduce((a,b)=>a+n(b.commission||b.wnFee),0);
-  const ccFees=fb.reduce((a,b)=>a+n(b.ccFee||0),0);
-  const wnFees=fb.reduce((a,b)=>a+b.wnFee,0);
-  const netRev=fb.reduce((a,b)=>a+b.netRev,0);
+  const gross=fb.reduce((a,b)=>a+n(b.gross),0);
+  const wnFees=fb.reduce((a,b)=>a+n(b.wnFee),0);
+  const netRev=fb.reduce((a,b)=>a+n(b.netRev),0);
   const totalAds=fa.reduce((a,v)=>a+v.amount,0);
   const shipCost=fsh.reduce((a,s)=>a+s.cost,0);
   const shipColl=fsh.reduce((a,s)=>a+s.charged,0);
@@ -734,9 +723,8 @@ function renderDash() {
   $('pl-rows').innerHTML=[
     R('REVENUE',0,true),
     R('Gross Revenue',gross),
-    R('(-) WN Commission ('+((fb[0]?.feePct||0.08)*100).toFixed(0)+'%)',-commission),
-    R('(-) CC Processing (2.9% + $0.30/order)',-ccFees),
-    R('Net Revenue',netRev,false,true),
+    R('(-) Whatnot Fees (commission + CC processing)',-wnFees),
+    R('Payout Received / Net Revenue',netRev,false,true),
     R('EXPENSES',0,true),
     R('(-) Inventory / COGS',-invCost),
     R('(-) Shipping Out (net)',-netShip),
@@ -785,19 +773,17 @@ function renderBreaks() {
   const fb=breaks.filter(b=>inR(b.date));
   $('b-cnt-lbl').textContent=fb.length+' entries — '+pTxt();
   $('b-tbody').innerHTML=fb.length?fb.map(b=>`<tr>
-    <td>${b.date}</td><td>${b.name}</td><td>${sportBadge(b.sport)}</td>
+    <td>${b.date}</td><td><b>${b.name}</b></td><td>${sportBadge(b.sport)}</td>
     <td><span class="badge b-blue">${b.type||'—'}</span></td>
-    <td class="m">${b.sold}/${b.spots}</td><td class="m">${fmt(b.price)}</td>
+    <td class="m">${b.sold||'—'}${b.spots?'/'+b.spots:''}</td>
     <td class="m">${fmt(b.gross)}</td>
-    <td class="m neg">(${fmt(b.commission||b.wnFee)})</td>
-    <td class="m neg">(${fmt(b.ccFee||0)})</td>
     <td class="m neg"><b>(${fmt(b.wnFee)})</b></td>
+    <td class="m pos">${fmt(b.payout||b.netRev)}</td>
     <td class="m neg">${b.cogs>0?'('+fmt(b.cogs)+')':'—'}</td>
     <td class="m" style="color:#c4b5fd">${b.adsp>0?'('+fmt(b.adsp)+')':'—'}</td>
-    <td class="m ${b.netRev>=0?'pos':'neg'}">${fmt(b.netRev)}</td>
     <td class="m ${b.profit>=0?'pos':'neg'}"><b>${fmt(b.profit)}</b></td>
     <td><button class="btn-d" onclick="delBreak(${b.id})">✕</button></td>
-  </tr>`).join(''):`<tr><td colspan="15" class="em">🃏 No breaks in this period</td></tr>`;
+  </tr>`).join(''):`<tr><td colspan="12" class="em">🃏 No breaks in this period</td></tr>`;
 }
 
 // ── RENDER PER-BREAK ──────────────────────────────────────────────
@@ -824,8 +810,8 @@ function renderPB() {
       <td><div>${b.name}</div><div class="pb-bar-wrap"><div class="pb-bar" style="width:${bw}%;background:${bc}"></div></div></td>
       <td>${sportBadge(b.sport)}</td><td><span class="badge b-blue">${b.type||'—'}</span></td>
       <td class="m">${fmt(b.gross)}</td>
-      <td class="m neg">(${fmt(b.commission||b.wnFee)})</td>
-      <td class="m neg">(${fmt(b.ccFee||0)})</td>
+      <td class="m neg">(${fmt(b.wnFee)})</td>
+      <td class="m pos">${fmt(b.payout||b.netRev)}</td>
       <td class="m neg">${b.cogs>0?'('+fmt(b.cogs)+')':'—'}</td>
       <td class="m" style="color:#c4b5fd">${b.adsp>0?'('+fmt(b.adsp)+')':'—'}</td>
       <td class="m ${b.netRev>=0?'pos':'neg'}">${fmt(b.netRev)}</td>

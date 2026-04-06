@@ -116,6 +116,19 @@ td.pos{color:var(--green)}td.neg{color:var(--red)}
 /* Shipping status colors */
 .sh-profit{color:var(--green)}.sh-loss{color:var(--red)}.sh-even{color:var(--muted)}
 
+/* EDIT MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+.modal-overlay.open{display:flex}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:24px;width:min(720px,95vw);max-height:88vh;overflow-y:auto;position:relative}
+.modal-title{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;color:var(--accent);margin-bottom:18px}
+.modal-close{position:absolute;top:16px;right:16px;background:transparent;border:1px solid var(--border);color:var(--muted);width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center}
+.modal-close:hover{border-color:var(--red);color:var(--red)}
+.modal-btns{display:flex;gap:10px;margin-top:16px;justify-content:flex-end}
+.btn-save{background:var(--teal);color:#000;font-weight:700}
+.btn-save:hover{background:#00a88a;transform:translateY(-1px)}
+.btn-edit{background:transparent;border:1px solid var(--blue);color:var(--blue);padding:3px 9px;font-size:11px;border-radius:5px;cursor:pointer}
+.btn-edit:hover{background:rgba(77,138,255,.1)}
+
 @media(max-width:900px){
   main,header,nav,.filter-bar{padding-left:14px;padding-right:14px}
   .pl-grid{grid-template-columns:1fr}
@@ -226,12 +239,11 @@ td.pos{color:var(--green)}td.neg{color:var(--red)}
       <div class="fg"><label>Break Type</label>
         <select id="b-type"><option value="">Select…</option><option>Random</option><option>Pick Your Team</option><option>Hit Draft</option><option>Serial</option><option>Case Break</option><option>Other</option></select>
       </div>
-      <div class="fg"><label>Total Spots Available</label><input type="number" id="b-spots" placeholder="0" min="0"></div>
-      <div class="fg"><label>Spots Sold</label><input type="number" id="b-sold" placeholder="0" min="0"></div>
       <div class="fg"><label>Total Stream Revenue ($) <span style="color:var(--muted);font-size:9px">from Whatnot dashboard</span></label><input type="number" id="b-gross" placeholder="0.00" step="0.01" oninput="updateFeePreview()"></div>
       <div class="fg"><label>Actual Payout Received ($) <span style="color:var(--muted);font-size:9px">what hit your account</span></label><input type="number" id="b-payout" placeholder="0.00" step="0.01" oninput="updateFeePreview()"></div>
       <div class="fg"><label>Total WN Fees <span style="color:var(--muted);font-size:9px">commission + CC (auto)</span></label><input type="text" id="b-fee-preview" placeholder="enter revenue + payout" readonly style="color:var(--gold);cursor:default"></div>
       <div class="fg"><label>Inventory Cost / COGS ($)</label><input type="number" id="b-cogs" placeholder="0.00" step="0.01"></div>
+      <div class="fg"><label>Shipping Cost ($) <span style="color:var(--muted);font-size:9px">postage you paid out</span></label><input type="number" id="b-shipcost" placeholder="0.00" step="0.01"></div>
       <div class="fg"><label>Ad Spend Linked ($)</label><input type="number" id="b-adspend" placeholder="0.00" step="0.01"></div>
       <div class="fg"><label>Notes</label><input type="text" id="b-notes" placeholder="Optional"></div>
     </div>
@@ -240,7 +252,7 @@ td.pos{color:var(--green)}td.neg{color:var(--red)}
   <div class="sec">Break History</div>
   <div class="tw">
     <div class="th"><b>Filtered Breaks</b><span id="b-cnt-lbl">0 entries</span></div>
-    <table><thead><tr><th>Date</th><th>Break Name</th><th>Sport</th><th>Type</th><th>Spots Sold</th><th>Gross Revenue</th><th>Total WN Fees</th><th>Payout Received</th><th>COGS</th><th>Ad $</th><th>Net Profit</th><th></th></tr></thead>
+    <table><thead><tr><th>Date</th><th>Break Name</th><th>Sport</th><th>Type</th><th>Gross Revenue</th><th>WN Fees</th><th>Payout</th><th>COGS</th><th>Shipping</th><th>Ad $</th><th>Net Profit</th><th></th></tr></thead>
     <tbody id="b-tbody"></tbody></table>
   </div>
 </div>
@@ -257,7 +269,7 @@ td.pos{color:var(--green)}td.neg{color:var(--red)}
   <div class="sec">All Breaks — Ranked by Profit</div>
   <div class="tw">
     <div class="th"><b>Per-Break P&L</b><span id="pb-cnt-lbl">0 breaks</span></div>
-    <table><thead><tr><th>#</th><th>Date</th><th>Break Name</th><th>Sport</th><th>Type</th><th>Gross Revenue</th><th>Total WN Fees</th><th>Payout Received</th><th>COGS</th><th>Ad $</th><th>Net Profit</th><th>Margin</th></tr></thead>
+    <table><thead><tr><th>#</th><th>Date</th><th>Break Name</th><th>Sport</th><th>Type</th><th>Gross Revenue</th><th>WN Fees</th><th>Payout</th><th>COGS</th><th>Shipping</th><th>Ad $</th><th>Net Profit</th><th>Margin</th></tr></thead>
     <tbody id="pb-tbody"></tbody></table>
   </div>
   <div class="pl-grid">
@@ -487,6 +499,19 @@ td.pos{color:var(--green)}td.neg{color:var(--red)}
 
 </main>
 
+<!-- ═══ EDIT MODAL ════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="edit-modal" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-title" id="modal-title">Edit Entry</div>
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div class="fg-grid" id="modal-fields"></div>
+    <div class="modal-btns">
+      <button class="btn btn-d" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-save" onclick="saveEdit()">✓ Save Changes</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ── STATE ─────────────────────────────────────────────────────────
 let breaks   = JSON.parse(localStorage.getItem('rae_breaks')   || '[]');
@@ -582,17 +607,18 @@ function addBreak() {
   const date=$('b-date').value, name=$('b-name').value.trim();
   const gross=parseFloat($('b-gross').value)||0;
   const payout=parseFloat($('b-payout').value)||0;
-  const cogs=parseFloat($('b-cogs').value)||0, adsp=parseFloat($('b-adspend').value)||0;
+  const cogs=parseFloat($('b-cogs').value)||0;
+  const shipcost=parseFloat($('b-shipcost').value)||0;
+  const adsp=parseFloat($('b-adspend').value)||0;
   if(!date||!name||gross<=0){alert('Fill in Date, Break Name, and Total Stream Revenue.');return;}
-  const wnFee  = gross - payout;   // exact total fees = revenue minus what you actually got
-  const netRev = payout;           // your actual cash from Whatnot
-  const profit = netRev - cogs - adsp;
+  const wnFee  = gross - payout;
+  const netRev = payout;
+  const profit = netRev - cogs - shipcost - adsp;
   breaks.unshift({id:Date.now(),date,name,sport:$('b-sport').value,type:$('b-type').value,
-    spots:parseInt($('b-spots').value)||0, sold:parseInt($('b-sold').value)||0,
-    gross, payout, wnFee, cogs, adsp, netRev, profit,
+    gross, payout, wnFee, cogs, shipcost, adsp, netRev, profit,
     notes:$('b-notes').value.trim(), month:mLabel(date)});
   save();
-  ['b-name','b-spots','b-sold','b-gross','b-payout','b-cogs','b-adspend','b-notes'].forEach(id=>$(id).value='');
+  ['b-name','b-gross','b-payout','b-cogs','b-shipcost','b-adspend','b-notes'].forEach(id=>$(id).value='');
   $('b-fee-preview').value='';
   renderBreaks(); renderDash(); renderPB();
 }
@@ -691,12 +717,13 @@ function renderDash() {
   const gross=fb.reduce((a,b)=>a+n(b.gross),0);
   const wnFees=fb.reduce((a,b)=>a+n(b.wnFee),0);
   const netRev=fb.reduce((a,b)=>a+n(b.netRev),0);
+  const breakShip=fb.reduce((a,b)=>a+n(b.shipcost||0),0);
   const totalAds=fa.reduce((a,v)=>a+v.amount,0);
   const shipCost=fsh.reduce((a,s)=>a+s.cost,0);
   const shipColl=fsh.reduce((a,s)=>a+s.charged,0);
   const netShip=shipCost-shipColl; // net shipping expense
   const totalExp=fex.reduce((a,e)=>a+e.amount,0);
-  const allExp=invCost+netShip+totalAds+totalExp;
+  const allExp=invCost+breakShip+netShip+totalAds+totalExp;
   const profit=netRev-allExp;
   const margin=gross>0?profit/gross:0;
 
@@ -706,7 +733,7 @@ function renderDash() {
   $('d-expenses').textContent=fmt(allExp);
   $('d-inv').textContent=fmt(invCost);
   $('d-ads').textContent=fmt(totalAds);
-  $('d-ship').textContent=fmt(shipCost);
+  $('d-ship').textContent=fmt(breakShip+netShip);
   $('d-other').textContent=fmt(totalExp);
   const pe=$('d-profit'); pe.textContent=fmt(Math.abs(profit)); pe.className='kpi-val '+(profit>=0?'pos':'neg');
   const me=$('d-margin'); me.textContent=pct(margin); me.className='kpi-val '+(margin>=0?'pos':'neg');
@@ -727,7 +754,7 @@ function renderDash() {
     R('Payout Received / Net Revenue',netRev,false,true),
     R('EXPENSES',0,true),
     R('(-) Inventory / COGS',-invCost),
-    R('(-) Shipping Out (net)',-netShip),
+    R('(-) Shipping Out',-breakShip-netShip),
     R('(-) Ad Spend',-totalAds),
     R('(-) Other Expenses',-totalExp),
     R('NET PROFIT',profit,false,true),
@@ -775,14 +802,17 @@ function renderBreaks() {
   $('b-tbody').innerHTML=fb.length?fb.map(b=>`<tr>
     <td>${b.date}</td><td><b>${b.name}</b></td><td>${sportBadge(b.sport)}</td>
     <td><span class="badge b-blue">${b.type||'—'}</span></td>
-    <td class="m">${b.sold||'—'}${b.spots?'/'+b.spots:''}</td>
     <td class="m">${fmt(b.gross)}</td>
-    <td class="m neg"><b>(${fmt(b.wnFee)})</b></td>
+    <td class="m neg">(${fmt(b.wnFee)})</td>
     <td class="m pos">${fmt(b.payout||b.netRev)}</td>
     <td class="m neg">${b.cogs>0?'('+fmt(b.cogs)+')':'—'}</td>
+    <td class="m neg">${(b.shipcost||0)>0?'('+fmt(b.shipcost)+')':'—'}</td>
     <td class="m" style="color:#c4b5fd">${b.adsp>0?'('+fmt(b.adsp)+')':'—'}</td>
     <td class="m ${b.profit>=0?'pos':'neg'}"><b>${fmt(b.profit)}</b></td>
-    <td><button class="btn-d" onclick="delBreak(${b.id})">✕</button></td>
+    <td style="display:flex;gap:5px;padding:8px 11px">
+      <button class="btn-edit" onclick="editBreak(${b.id})">✏</button>
+      <button class="btn-d" onclick="delBreak(${b.id})">✕</button>
+    </td>
   </tr>`).join(''):`<tr><td colspan="12" class="em">🃏 No breaks in this period</td></tr>`;
 }
 
@@ -813,6 +843,7 @@ function renderPB() {
       <td class="m neg">(${fmt(b.wnFee)})</td>
       <td class="m pos">${fmt(b.payout||b.netRev)}</td>
       <td class="m neg">${b.cogs>0?'('+fmt(b.cogs)+')':'—'}</td>
+      <td class="m neg">${(b.shipcost||0)>0?'('+fmt(b.shipcost)+')':'—'}</td>
       <td class="m" style="color:#c4b5fd">${b.adsp>0?'('+fmt(b.adsp)+')':'—'}</td>
       <td class="m ${b.netRev>=0?'pos':'neg'}">${fmt(b.netRev)}</td>
       <td class="m ${b.profit>=0?'pos':'neg'}"><b>${fmt(b.profit)}</b></td>
@@ -830,7 +861,11 @@ function renderInv() {
     <td>${v.date}</td><td><b>${v.product}</b></td><td><span class="badge b-gold">${v.cat||'—'}</span></td>
     <td class="m">${v.qty}</td><td class="m">${fmt(v.cost)}</td><td class="m neg">(${fmt(v.total)})</td>
     <td>${v.brk||'—'}</td><td><span class="badge ${sb(v.status)}">${v.status}</span></td>
-    <td>${v.notes||'—'}</td><td><button class="btn-d" onclick="delInv(${v.id})">✕</button></td>
+    <td>${v.notes||'—'}</td>
+    <td style="display:flex;gap:5px;padding:8px 11px">
+      <button class="btn-edit" onclick="editInv(${v.id})">✏</button>
+      <button class="btn-d" onclick="delInv(${v.id})">✕</button>
+    </td>
   </tr>`).join(''):`<tr><td colspan="10" class="em">📦 No inventory logged yet</td></tr>`;
 }
 
@@ -855,7 +890,10 @@ function renderShip() {
       <td class="m ${plCls}"><b>${s.pl>0?'+':''}${fmt(s.pl)}</b></td>
       <td style="font-size:12px">${s.items||'—'}</td>
       <td>${s.notes||'—'}</td>
-      <td><button class="btn-d" onclick="delShip(${s.id})">✕</button></td>
+      <td style="display:flex;gap:5px;padding:8px 11px">
+        <button class="btn-edit" onclick="editShip(${s.id})">✏</button>
+        <button class="btn-d" onclick="delShip(${s.id})">✕</button>
+      </td>
     </tr>`;
   }).join(''):`<tr><td colspan="12" class="em">📬 No shipments logged yet</td></tr>`;
 }
@@ -872,7 +910,10 @@ function renderAds() {
     <td>${a.brk||'—'}</td><td class="m pos">${a.rev>0?fmt(a.rev):'—'}</td>
     <td class="m">${a.rev>0?roasStr(a.rev,a.amount):'—'}</td>
     <td>${a.notes||'—'}</td>
-    <td><button class="btn-d" onclick="delAd(${a.id})">✕</button></td>
+    <td style="display:flex;gap:5px;padding:8px 11px">
+      <button class="btn-edit" onclick="editAd(${a.id})">✏</button>
+      <button class="btn-d" onclick="delAd(${a.id})">✕</button>
+    </td>
   </tr>`).join(''):`<tr><td colspan="9" class="em">📣 No ad spend logged yet</td></tr>`;
 }
 
@@ -891,7 +932,10 @@ function renderExp() {
     <td><span class="badge ${e.recurring==='No'?'b-teal':e.recurring==='Monthly'?'b-gold':'b-purple'}">${e.recurring}</span></td>
     <td>${deductBadge(e.taxDed)}</td>
     <td>${e.notes||'—'}</td>
-    <td><button class="btn-d" onclick="delExp(${e.id})">✕</button></td>
+    <td style="display:flex;gap:5px;padding:8px 11px">
+      <button class="btn-edit" onclick="editExp(${e.id})">✏</button>
+      <button class="btn-d" onclick="delExp(${e.id})">✕</button>
+    </td>
   </tr>`).join(''):`<tr><td colspan="8" class="em">🔧 No expenses logged yet</td></tr>`;
 }
 
@@ -911,7 +955,10 @@ function renderPayouts() {
     <td><span class="badge b-blue">${p.method}</span></td>
     <td>${statusBadge(p.status)}</td>
     <td>${p.notes||'—'}</td>
-    <td><button class="btn-d" onclick="delPayout(${p.id})">✕</button></td>
+    <td style="display:flex;gap:5px;padding:8px 11px">
+      <button class="btn-edit" onclick="editPayout(${p.id})">✏</button>
+      <button class="btn-d" onclick="delPayout(${p.id})">✕</button>
+    </td>
   </tr>`).join(''):`<tr><td colspan="9" class="em">💰 No payouts logged yet</td></tr>`;
 }
 
@@ -1000,16 +1047,16 @@ function exportXLSX() {
 
       // ── Sheet: Breaks ──
       const breakRows = [
-        ['Date','Break Name','Sport','Type','Total Spots','Spots Sold','Spot Price','WN Fee %','Gross Revenue','WN Fee $','COGS','Ad Spend Linked','Net Revenue','Profit','Notes','Month']
+        ['Date','Break Name','Sport','Type','Gross Revenue','WN Fees','Payout Received','COGS','Shipping Cost','Ad Spend','Net Profit','Notes','Month']
       ];
       breaks.forEach(b => breakRows.push([
         b.date, b.name, b.sport||'', b.type||'',
-        n(b.spots), n(b.sold), n(b.price), n(b.feePct),
-        n(b.gross), n(b.wnFee), n(b.cogs), n(b.adsp),
-        n(b.netRev), n(b.profit), b.notes||'', b.month||''
+        n(b.gross), n(b.wnFee), n(b.payout||b.netRev),
+        n(b.cogs), n(b.shipcost||0), n(b.adsp),
+        n(b.profit), b.notes||'', b.month||''
       ]));
       const wsBreaks = XLSX.utils.aoa_to_sheet(breakRows);
-      wsBreaks['!cols'] = [10,24,10,16,12,12,12,12,16,12,12,14,14,12,24,12].map(w=>({wch:w}));
+      wsBreaks['!cols'] = [10,24,10,16,16,14,16,12,14,12,12,24,12].map(w=>({wch:w}));
       XLSX.utils.book_append_sheet(wb, wsBreaks, 'Break Log');
 
       // ── Sheet: Inventory ──
@@ -1134,6 +1181,213 @@ function exportXLSX() {
       alert('Export failed: ' + e.message);
     }
   }, 50);
+}
+
+// ── MODAL EDIT SYSTEM ─────────────────────────────────────────────
+let modalCtx = null; // {type, id}
+
+function field(label, key, val, type='text', opts=null) {
+  if (opts) {
+    const optHtml = opts.map(o => `<option value="${o.v}" ${o.v==val?'selected':''}>${o.l}</option>`).join('');
+    return `<div class="fg"><label>${label}</label><select data-key="${key}">${optHtml}</select></div>`;
+  }
+  return `<div class="fg"><label>${label}</label><input type="${type}" data-key="${key}" value="${val||''}" step="${type==='number'?'0.01':''}"></div>`;
+}
+
+const sportOpts = [
+  {v:'',l:'Select…'},{v:'NBA',l:'NBA'},{v:'NFL',l:'NFL'},{v:'MLB',l:'MLB'},
+  {v:'NHL',l:'NHL'},{v:'Soccer',l:'Soccer'},{v:'Pokemon',l:'Pokemon'},
+  {v:'Other TCG',l:'Other TCG'},{v:'Mixed',l:'Mixed'}
+];
+const typeOpts = [
+  {v:'',l:'Select…'},{v:'Random',l:'Random'},{v:'Pick Your Team',l:'Pick Your Team'},
+  {v:'Hit Draft',l:'Hit Draft'},{v:'Serial',l:'Serial'},{v:'Case Break',l:'Case Break'},{v:'Other',l:'Other'}
+];
+const carrierOpts = [
+  {v:'',l:'Select…'},{v:'USPS First Class',l:'USPS First Class'},{v:'USPS Priority',l:'USPS Priority'},
+  {v:'USPS Ground',l:'USPS Ground'},{v:'UPS Ground',l:'UPS Ground'},{v:'UPS 2-Day',l:'UPS 2-Day'},
+  {v:'FedEx Ground',l:'FedEx Ground'},{v:'FedEx Overnight',l:'FedEx Overnight'},{v:'Other',l:'Other'}
+];
+const adTypeOpts = [
+  {v:'',l:'Select…'},{v:'Whatnot Promoted Listing',l:'Whatnot Promoted Listing'},
+  {v:'Whatnot Boost',l:'Whatnot Boost'},{v:'Whatnot Featured Slot',l:'Whatnot Featured Slot'},
+  {v:'Instagram / Facebook',l:'Instagram / Facebook'},{v:'TikTok',l:'TikTok'},
+  {v:'YouTube',l:'YouTube'},{v:'Influencer / Collab',l:'Influencer / Collab'},{v:'Other',l:'Other'}
+];
+const expCatOpts = [
+  {v:'',l:'Select…'},{v:'Subscription / Software',l:'Subscription / Software'},
+  {v:'Payment Processing Fees',l:'Payment Processing Fees'},{v:'Equipment / Hardware',l:'Equipment / Hardware'},
+  {v:'Office / Packaging Supplies',l:'Office / Packaging Supplies'},
+  {v:'Phone / Internet (% business)',l:'Phone / Internet (% business)'},{v:'Mileage / Travel',l:'Mileage / Travel'},
+  {v:'Professional Services',l:'Professional Services'},{v:'Banking Fees',l:'Banking Fees'},{v:'Other',l:'Other'}
+];
+const recurringOpts = [{v:'No',l:'No — one-time'},{v:'Monthly',l:'Monthly'},{v:'Annual',l:'Annual'}];
+const taxOpts       = [{v:'Yes',l:'Yes'},{v:'Maybe',l:'Maybe / Ask CPA'},{v:'No',l:'No'}];
+const statusOpts    = [{v:'Paid',l:'Paid'},{v:'Pending',l:'Pending'},{v:'Processing',l:'Processing'}];
+const methodOpts    = [{v:'Bank Transfer',l:'Bank Transfer'},{v:'Instant Pay',l:'Instant Pay'},{v:'Check',l:'Check'},{v:'Other',l:'Other'}];
+const invStatusOpts = [{v:'In Stock',l:'In Stock'},{v:'Broken',l:'Broken'},{v:'Sold',l:'Sold'},{v:'Reserved',l:'Reserved'}];
+const invCatOpts    = [{v:'',l:'Select…'},{v:'NBA',l:'NBA'},{v:'NFL',l:'NFL'},{v:'MLB',l:'MLB'},{v:'NHL',l:'NHL'},{v:'Soccer',l:'Soccer'},{v:'Pokemon',l:'Pokemon'},{v:'Other TCG',l:'Other TCG'},{v:'Supplies',l:'Supplies'},{v:'Other',l:'Other'}];
+
+function openModal(title, fieldsHtml) {
+  $('modal-title').textContent = title;
+  $('modal-fields').innerHTML = fieldsHtml;
+  $('edit-modal').classList.add('open');
+}
+function closeModal() {
+  $('edit-modal').classList.remove('open');
+  modalCtx = null;
+}
+function getModalVals() {
+  const vals = {};
+  $('modal-fields').querySelectorAll('[data-key]').forEach(el => {
+    const k = el.dataset.key;
+    vals[k] = el.type === 'number' ? (parseFloat(el.value)||0) : el.value;
+  });
+  return vals;
+}
+
+// ── EDIT BREAKS ───────────────────────────────────────────────────
+function editBreak(id) {
+  const b = breaks.find(x=>x.id===id); if(!b) return;
+  modalCtx = {type:'break', id};
+  openModal('✏ Edit Break', [
+    field('Date','date',b.date,'date'),
+    field('Break Name','name',b.name),
+    field('Sport / Category','sport',b.sport,null,sportOpts),
+    field('Break Type','type',b.type,null,typeOpts),
+    field('Total Stream Revenue ($)','gross',b.gross,'number'),
+    field('Actual Payout Received ($)','payout',b.payout||b.netRev,'number'),
+    field('Inventory Cost / COGS ($)','cogs',b.cogs,'number'),
+    field('Shipping Cost ($)','shipcost',b.shipcost||0,'number'),
+    field('Ad Spend Linked ($)','adsp',b.adsp,'number'),
+    field('Notes','notes',b.notes),
+  ].join(''));
+}
+
+// ── EDIT INVENTORY ────────────────────────────────────────────────
+function editInv(id) {
+  const v = inv.find(x=>x.id===id); if(!v) return;
+  modalCtx = {type:'inv', id};
+  openModal('✏ Edit Inventory Item', [
+    field('Date','date',v.date,'date'),
+    field('Product / Set','product',v.product),
+    field('Category','cat',v.cat,null,invCatOpts),
+    field('Qty','qty',v.qty,'number'),
+    field('Cost Per Unit ($)','cost',v.cost,'number'),
+    field('Assigned Break','brk',v.brk),
+    field('Status','status',v.status,null,invStatusOpts),
+    field('Notes','notes',v.notes),
+  ].join(''));
+}
+
+// ── EDIT SHIPPING ─────────────────────────────────────────────────
+function editShip(id) {
+  const s = shipping.find(x=>x.id===id); if(!s) return;
+  modalCtx = {type:'ship', id};
+  openModal('✏ Edit Shipment', [
+    field('Ship Date','date',s.date,'date'),
+    field('Buyer / Winner','buyer',s.buyer),
+    field('Linked Break','brk',s.brk),
+    field('Carrier','carrier',s.carrier,null,carrierOpts),
+    field('Tracking #','tracking',s.tracking),
+    field('Postage Cost ($)','cost',s.cost,'number'),
+    field('Collected from Buyer ($)','charged',s.charged,'number'),
+    field('Items','items',s.items),
+    field('Notes','notes',s.notes),
+  ].join(''));
+}
+
+// ── EDIT ADS ──────────────────────────────────────────────────────
+function editAd(id) {
+  const a = ads.find(x=>x.id===id); if(!a) return;
+  modalCtx = {type:'ad', id};
+  openModal('✏ Edit Ad Spend', [
+    field('Date','date',a.date,'date'),
+    field('Ad Type','type',a.type,null,adTypeOpts),
+    field('Campaign / Description','desc',a.desc),
+    field('Amount Spent ($)','amount',a.amount,'number'),
+    field('Linked Break','brk',a.brk),
+    field('Revenue Attributed ($)','rev',a.rev,'number'),
+    field('Notes','notes',a.notes),
+  ].join(''));
+}
+
+// ── EDIT EXPENSES ─────────────────────────────────────────────────
+function editExp(id) {
+  const e = expenses.find(x=>x.id===id); if(!e) return;
+  modalCtx = {type:'exp', id};
+  openModal('✏ Edit Expense', [
+    field('Date','date',e.date,'date'),
+    field('Description','desc',e.desc),
+    field('Category','cat',e.cat,null,expCatOpts),
+    field('Amount ($)','amount',e.amount,'number'),
+    field('Recurring','recurring',e.recurring,null,recurringOpts),
+    field('Tax Deductible','taxDed',e.taxDed,null,taxOpts),
+    field('Notes / Vendor','notes',e.notes),
+  ].join(''));
+}
+
+// ── EDIT PAYOUTS ──────────────────────────────────────────────────
+function editPayout(id) {
+  const p = payouts.find(x=>x.id===id); if(!p) return;
+  modalCtx = {type:'payout', id};
+  openModal('✏ Edit Payout', [
+    field('Payout Date','date',p.date,'date'),
+    field('Period Covered','period',p.period),
+    field('Gross Earnings ($)','gross',p.gross,'number'),
+    field('WN Fees Deducted ($)','fees',p.fees,'number'),
+    field('Net Payout Received ($)','net',p.net,'number'),
+    field('Status','status',p.status,null,statusOpts),
+    field('Payout Method','method',p.method,null,methodOpts),
+    field('Notes','notes',p.notes),
+  ].join(''));
+}
+
+// ── SAVE EDIT ─────────────────────────────────────────────────────
+function saveEdit() {
+  if (!modalCtx) return;
+  const v = getModalVals();
+  const {type, id} = modalCtx;
+
+  if (type === 'break') {
+    const idx = breaks.findIndex(x=>x.id===id);
+    if (idx < 0) return;
+    const wnFee  = v.gross - v.payout;
+    const netRev = v.payout;
+    const profit = netRev - v.cogs - (v.shipcost||0) - v.adsp;
+    breaks[idx] = {...breaks[idx], ...v, wnFee, netRev, profit, month: mLabel(v.date)};
+    save(); closeModal(); renderBreaks(); renderDash(); renderPB();
+  }
+  else if (type === 'inv') {
+    const idx = inv.findIndex(x=>x.id===id);
+    if (idx < 0) return;
+    inv[idx] = {...inv[idx], ...v, total: v.qty * v.cost};
+    save(); closeModal(); renderInv(); renderDash();
+  }
+  else if (type === 'ship') {
+    const idx = shipping.findIndex(x=>x.id===id);
+    if (idx < 0) return;
+    shipping[idx] = {...shipping[idx], ...v, pl: v.charged - v.cost, month: mLabel(v.date)};
+    save(); closeModal(); renderShip(); renderDash();
+  }
+  else if (type === 'ad') {
+    const idx = ads.findIndex(x=>x.id===id);
+    if (idx < 0) return;
+    ads[idx] = {...ads[idx], ...v, month: mLabel(v.date)};
+    save(); closeModal(); renderAds(); renderDash();
+  }
+  else if (type === 'exp') {
+    const idx = expenses.findIndex(x=>x.id===id);
+    if (idx < 0) return;
+    expenses[idx] = {...expenses[idx], ...v, month: mLabel(v.date)};
+    save(); closeModal(); renderExp(); renderDash();
+  }
+  else if (type === 'payout') {
+    const idx = payouts.findIndex(x=>x.id===id);
+    if (idx < 0) return;
+    payouts[idx] = {...payouts[idx], ...v};
+    save(); closeModal(); renderPayouts(); renderHdr();
+  }
 }
 
 // ── INIT ──────────────────────────────────────────────────────────
